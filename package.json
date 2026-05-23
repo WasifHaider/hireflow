@@ -1,0 +1,15 @@
+{
+  "name": "hireflow",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Multi-tenant SaaS hiring platform with AI-powered candidate screening",
+  "scripts": {
+    "dev:backend": "cd apps/backend && npm run dev",
+    "dev:frontend": "cd apps/frontend && npm run dev",
+    "dev:ml": "cd apps/ml-service && venv\\Scripts\\python.exe -m uvicorn main:app --reload --host 0.0.0.0 --port 8100",
+    "dev": "concurrently -n backend,frontend,ml -c blue,green,yellow \"npm run dev:backend\" \"npm run dev:frontend\" \"npm run dev:ml\""
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2"
+  }
+}
