@@ -1,0 +1,712 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>HireFlow — Recruiter Authentication (v1)</title>
+    <style>
+      :root {
+        --bg: #0f1419;
+        --surface: #1a2332;
+        --border: #2d3a4f;
+        --text: #e7ecf3;
+        --muted: #8b9cb3;
+        --accent: #3b82f6;
+        --accent-dim: #1e3a5f;
+        --success: #22c55e;
+        --warning: #f59e0b;
+        --danger: #ef4444;
+        --code-bg: #0d1117;
+        --font: 'Segoe UI', system-ui, -apple-system, sans-serif;
+        --mono: 'Cascadia Code', 'Fira Code', Consolas, monospace;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        font-family: var(--font);
+        background: var(--bg);
+        color: var(--text);
+        line-height: 1.65;
+      }
+
+      .layout {
+        display: grid;
+        grid-template-columns: 260px 1fr;
+        min-height: 100vh;
+      }
+
+      nav {
+        position: sticky;
+        top: 0;
+        height: 100vh;
+        overflow-y: auto;
+        padding: 1.5rem 1rem;
+        border-right: 1px solid var(--border);
+        background: var(--surface);
+      }
+
+      nav h2 {
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        color: var(--muted);
+        margin: 0 0 1rem 0.75rem;
+      }
+
+      nav a {
+        display: block;
+        padding: 0.4rem 0.75rem;
+        color: var(--muted);
+        text-decoration: none;
+        font-size: 0.9rem;
+        border-radius: 6px;
+      }
+
+      nav a:hover {
+        color: var(--text);
+        background: var(--accent-dim);
+      }
+
+      main {
+        max-width: 900px;
+        padding: 2.5rem 3rem 4rem;
+      }
+
+      h1 {
+        font-size: 2rem;
+        font-weight: 700;
+        margin: 0 0 0.5rem;
+        letter-spacing: -0.02em;
+      }
+
+      .subtitle {
+        color: var(--muted);
+        font-size: 1.05rem;
+        margin-bottom: 2rem;
+      }
+
+      h2 {
+        font-size: 1.45rem;
+        margin: 2.5rem 0 1rem;
+        padding-bottom: 0.5rem;
+        border-bottom: 1px solid var(--border);
+      }
+
+      h3 {
+        font-size: 1.1rem;
+        margin: 1.5rem 0 0.75rem;
+        color: #c5d0e0;
+      }
+
+      p,
+      li {
+        color: #c8d2e0;
+      }
+
+      ul {
+        padding-left: 1.25rem;
+      }
+
+      .badge {
+        display: inline-block;
+        font-size: 0.7rem;
+        font-weight: 600;
+        padding: 0.2rem 0.5rem;
+        border-radius: 4px;
+        background: var(--accent-dim);
+        color: var(--accent);
+        margin-right: 0.35rem;
+        vertical-align: middle;
+      }
+
+      .badge.post {
+        background: #14532d;
+        color: var(--success);
+      }
+
+      .badge.get {
+        background: #1e3a5f;
+        color: #60a5fa;
+      }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 0.9rem;
+        margin: 1rem 0;
+      }
+
+      th,
+      td {
+        text-align: left;
+        padding: 0.6rem 0.75rem;
+        border: 1px solid var(--border);
+      }
+
+      th {
+        background: var(--surface);
+        color: var(--muted);
+        font-weight: 600;
+      }
+
+      pre {
+        background: var(--code-bg);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 1rem 1.25rem;
+        overflow-x: auto;
+        font-family: var(--mono);
+        font-size: 0.82rem;
+        line-height: 1.5;
+      }
+
+      code {
+        font-family: var(--mono);
+        font-size: 0.88em;
+        background: var(--code-bg);
+        padding: 0.15em 0.4em;
+        border-radius: 4px;
+        border: 1px solid var(--border);
+      }
+
+      .flow {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 1.25rem;
+        font-family: var(--mono);
+        font-size: 0.8rem;
+        line-height: 1.6;
+        white-space: pre;
+        overflow-x: auto;
+      }
+
+      .tree {
+        font-family: var(--mono);
+        font-size: 0.85rem;
+        background: var(--code-bg);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 1rem 1.25rem;
+        line-height: 1.55;
+      }
+
+      .callout {
+        border-left: 4px solid var(--accent);
+        background: var(--accent-dim);
+        padding: 0.85rem 1.1rem;
+        margin: 1rem 0;
+        border-radius: 0 8px 8px 0;
+        font-size: 0.95rem;
+      }
+
+      .callout.warn {
+        border-color: var(--warning);
+        background: #422006;
+      }
+
+      .callout.danger {
+        border-color: var(--danger);
+        background: #450a0a;
+      }
+
+      .step-num {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 1.75rem;
+        height: 1.75rem;
+        background: var(--accent);
+        color: #fff;
+        font-weight: 700;
+        font-size: 0.85rem;
+        border-radius: 50%;
+        margin-right: 0.5rem;
+      }
+
+      footer {
+        margin-top: 3rem;
+        padding-top: 1.5rem;
+        border-top: 1px solid var(--border);
+        color: var(--muted);
+        font-size: 0.85rem;
+      }
+
+      @media (max-width: 768px) {
+        .layout {
+          grid-template-columns: 1fr;
+        }
+        nav {
+          position: static;
+          height: auto;
+        }
+        main {
+          padding: 1.5rem;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="layout">
+      <nav>
+        <h2>Contents</h2>
+        <a href="#overview">Overview</a>
+        <a href="#endpoints">API Endpoints</a>
+        <a href="#architecture">Architecture</a>
+        <a href="#files">File Structure</a>
+        <a href="#config">Configuration</a>
+        <a href="#step-1">Step 1 — DTOs</a>
+        <a href="#step-2">Step 2 — JWT Payload</a>
+        <a href="#step-3">Step 3 — AuthService</a>
+        <a href="#step-4">Step 4 — JwtStrategy</a>
+        <a href="#step-5">Step 5 — JwtAuthGuard</a>
+        <a href="#step-6">Step 6 — CurrentUser</a>
+        <a href="#step-7">Step 7 — AuthController</a>
+        <a href="#step-8">Step 8 — AuthModule</a>
+        <a href="#step-9">Step 9 — Swagger Bearer</a>
+        <a href="#step-10">Step 10 — Manual Testing</a>
+        <a href="#out-of-scope">Out of Scope (v1)</a>
+      </nav>
+
+      <main>
+        <h1>Recruiter Authentication</h1>
+        <p class="subtitle">
+          HireFlow backend — custom JWT auth for company signup, sign-in, and
+          protected routes. NestJS + TypeScript + Prisma + Passport.
+        </p>
+
+        <section id="overview">
+          <h2>Overview</h2>
+          <p>
+            We built a <strong>self-hosted JWT authentication system</strong> for
+            recruiters (v1). It does <em>not</em> use Supabase Auth — passwords are
+            hashed with bcrypt, tokens are signed with <code>JWT_SECRET</code>, and
+            protected routes validate the Bearer token on every request.
+          </p>
+          <p>Three working endpoints:</p>
+          <table>
+            <thead>
+              <tr>
+                <th>Method</th>
+                <th>Path</th>
+                <th>Purpose</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><span class="badge post">POST</span></td>
+                <td><code>/auth/company/signup</code></td>
+                <td>Create Company + first admin User, return JWT</td>
+              </tr>
+              <tr>
+                <td><span class="badge post">POST</span></td>
+                <td><code>/auth/signin</code></td>
+                <td>Authenticate by email/password, return JWT</td>
+              </tr>
+              <tr>
+                <td><span class="badge get">GET</span></td>
+                <td><code>/auth/me</code></td>
+                <td>Protected — return current user (proves JWT guard)</td>
+              </tr>
+            </tbody>
+          </table>
+          <p>
+            <strong>Base URL (dev):</strong>
+            <code>http://localhost:3200</code> &nbsp;|&nbsp;
+            <strong>Swagger:</strong>
+            <code>http://localhost:3200/api/docs</code>
+          </p>
+        </section>
+
+        <section id="endpoints">
+          <h2>Request / Response Shape</h2>
+          <h3>Signup &amp; Sign-in success</h3>
+          <pre>{
+  "user": { "id", "companyId", "email", "fullName", "role", "avatarUrl", "lastLoginAt", ... },
+  "company": { "id", "name", "slug", "industry", "size", ... },
+  "accessToken": "&lt;JWT string&gt;"
+}</pre>
+          <div class="callout danger">
+            <strong>Never</strong> return <code>passwordHash</code> in any response.
+            It is stripped in <code>AuthService</code> and in <code>JwtStrategy.validate()</code>.
+          </div>
+        </section>
+
+        <section id="architecture">
+          <h2>Architecture</h2>
+          <div class="flow">┌─────────────┐     POST /auth/company/signup
+│   Client    │     POST /auth/signin
+│  (Swagger)  │     GET  /auth/me  + Authorization: Bearer &lt;token&gt;
+└──────┬──────┘
+       │
+       ▼
+┌──────────────────────────────────────────────────────────────┐
+│  ValidationPipe (global) — DTOs, whitelist, transform        │
+└──────────────────────────────┬───────────────────────────────┘
+                               ▼
+┌──────────────────────────────────────────────────────────────┐
+│  AuthController                                              │
+└──────────────────────────────┬───────────────────────────────┘
+                               ▼
+┌──────────────────────────────────────────────────────────────┐
+│  AuthService — bcrypt, Prisma, JwtService.sign()             │
+└──────────────────────────────┬───────────────────────────────┘
+       signup/signin            │              GET /auth/me
+       creates/updates DB       │                    │
+       returns accessToken      │                    ▼
+                               │     ┌────────────────────────────┐
+                               │     │  JwtAuthGuard → Passport   │
+                               │     │  JwtStrategy               │
+                               │     │  • extract Bearer token    │
+                               │     │  • verify signature + exp  │
+                               │     │  • validate(payload)       │
+                               │     │    → re-fetch user from DB │
+                               │     │  • attach to req.user      │
+                               │     └─────────────┬──────────────┘
+                               │                   ▼
+                               │     @CurrentUser() → controller
+                               ▼
+                    ┌─────────────────────┐
+                    │  PostgreSQL         │
+                    │  (Supabase)         │
+                    │  companies, users   │
+                    └─────────────────────┘</div>
+
+          <h3>Passport concepts</h3>
+          <ul>
+            <li>
+              <strong>PassportModule</strong> — integrates Passport with Nest.
+            </li>
+            <li>
+              <strong>Strategy (<code>jwt</code>)</strong> — defines how to extract
+              and verify the JWT, then what to put on <code>req.user</code>.
+            </li>
+            <li>
+              <strong>Guard (<code>AuthGuard('jwt')</code>)</strong> — runs the
+              strategy before the route handler; blocks with 401 if invalid.
+            </li>
+          </ul>
+        </section>
+
+        <section id="files">
+          <h2>File Structure</h2>
+          <div class="tree">apps/backend/src/
+├── app.module.ts          # ConfigModule.forRoot (global), AuthModule
+├── main.ts                # ValidationPipe, Swagger + Bearer auth, port 3200
+└── auth/
+    ├── dto/
+    │   ├── signup-company.dto.ts
+    │   └── signin.dto.ts
+    ├── types/
+    │   ├── jwt-payload.type.ts
+    │   └── safe-user.type.ts
+    ├── strategies/
+    │   └── jwt.strategy.ts
+    ├── guards/
+    │   └── jwt-auth.guard.ts
+    ├── decorators/
+    │   └── current-user.decorator.ts
+    ├── auth.controller.ts
+    ├── auth.service.ts
+    └── auth.module.ts</div>
+        </section>
+
+        <section id="config">
+          <h2>Configuration</h2>
+          <table>
+            <thead>
+              <tr>
+                <th>Variable</th>
+                <th>Purpose</th>
+                <th>Default</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><code>JWT_SECRET</code></td>
+                <td>Signing key for access tokens</td>
+                <td>— (required)</td>
+              </tr>
+              <tr>
+                <td><code>JWT_EXPIRES_IN</code></td>
+                <td>Token lifetime (ms format, e.g. <code>7d</code>)</td>
+                <td><code>7d</code></td>
+              </tr>
+              <tr>
+                <td><code>DATABASE_URL</code></td>
+                <td>Prisma → Supabase PostgreSQL</td>
+                <td>—</td>
+              </tr>
+            </tbody>
+          </table>
+          <p>
+            bcrypt salt rounds: <strong>10</strong> (constant in
+            <code>AuthService</code>).
+          </p>
+        </section>
+
+        <section id="step-1">
+          <h2><span class="step-num">1</span>DTOs</h2>
+          <p>
+            <code>SignupCompanyDto</code> and <code>SigninDto</code> use
+            <code>class-validator</code> + <code>class-transformer</code>. The global
+            <code>ValidationPipe</code> rejects invalid bodies with <strong>400</strong>
+            before business logic runs.
+          </p>
+          <table>
+            <thead>
+              <tr>
+                <th>Field (signup)</th>
+                <th>Rules</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><code>companyName</code></td>
+                <td>Required, 2–100 chars</td>
+              </tr>
+              <tr>
+                <td><code>slug</code></td>
+                <td>Optional; <code>^[a-z0-9-]+$</code>, 2–50 chars</td>
+              </tr>
+              <tr>
+                <td><code>fullName</code></td>
+                <td>Required, 2–100 chars</td>
+              </tr>
+              <tr>
+                <td><code>email</code></td>
+                <td>Valid email; trimmed + lowercased via <code>@Transform</code></td>
+              </tr>
+              <tr>
+                <td><code>password</code></td>
+                <td>Min 8 chars; at least one letter and one number</td>
+              </tr>
+              <tr>
+                <td><code>industry</code></td>
+                <td>Optional string</td>
+              </tr>
+              <tr>
+                <td><code>size</code></td>
+                <td>Optional: <code>1-10</code> | <code>11-50</code> | … | <code>500+</code></td>
+              </tr>
+            </tbody>
+          </table>
+          <div class="callout">
+            <strong>Why lowercase email?</strong> Email is case-insensitive for
+            identity. Normalizing at the DTO boundary keeps the unique index stable
+            and avoids duplicate accounts (<code>Jane@x.com</code> vs
+            <code>jane@x.com</code>).
+          </div>
+          <p>
+            Properties use <code>email!: string</code> — the <code>!</code> definite
+            assignment assertion satisfies <code>strictPropertyInitialization</code>;
+            Nest fills fields from JSON at runtime, not via a constructor.
+          </p>
+        </section>
+
+        <section id="step-2">
+          <h2><span class="step-num">2</span>JWT Payload Type</h2>
+          <pre>interface JwtPayload {
+  sub: string;       // user ID (JWT standard "subject")
+  companyId: string;
+  email: string;
+  role: 'ADMIN' | 'RECRUITER';
+}</pre>
+          <ul>
+            <li>
+              <strong><code>sub</code></strong> — standard JWT claim for the principal
+              (user id). Libraries expect this name.
+            </li>
+            <li>
+              <strong>Minimal payload</strong> — JWTs are only signed, not encrypted;
+              anyone with the token can read claims. Full user state is loaded from the
+              DB in the strategy.
+            </li>
+          </ul>
+        </section>
+
+        <section id="step-3">
+          <h2><span class="step-num">3</span>AuthService</h2>
+          <h3><code>signupCompany(dto)</code></h3>
+          <ol>
+            <li>Check email uniqueness (409 if taken).</li>
+            <li>
+              Hash password with bcrypt <strong>outside</strong> the transaction (slow;
+              don’t hold DB locks during hashing).
+            </li>
+            <li>Generate slug from <code>companyName</code> if omitted (slugify).</li>
+            <li>Resolve unique slug (append random 4-char suffix if collision).</li>
+            <li>
+              <code>prisma.$transaction</code> — create <code>Company</code>, then
+              <code>User</code> with <code>role: ADMIN</code>, set
+              <code>lastLoginAt</code>.
+            </li>
+            <li>On <code>P2002</code> slug race — retry with new slug (up to 3 attempts).</li>
+            <li><code>generateToken(user)</code> → return user (no hash), company, token.</li>
+          </ol>
+          <h3><code>signin(dto)</code></h3>
+          <ol>
+            <li>Find user by email (include company).</li>
+            <li>
+              If missing user <em>or</em> <code>bcrypt.compare</code> fails →
+              <code>UnauthorizedException('Invalid credentials')</code> — same message
+              for both (prevents email enumeration).
+            </li>
+            <li>Update <code>lastLoginAt</code>, sign JWT, return safe user + company + token.</li>
+          </ol>
+          <h3><code>generateToken(user)</code> (private)</h3>
+          <p>Builds <code>JwtPayload</code> and calls <code>jwtService.sign(payload)</code>.</p>
+        </section>
+
+        <section id="step-4">
+          <h2><span class="step-num">4</span>JwtStrategy</h2>
+          <p>Extends <code>PassportStrategy(Strategy)</code> from <code>passport-jwt</code>:</p>
+          <ul>
+            <li>Extracts token from <code>Authorization: Bearer &lt;token&gt;</code></li>
+            <li><code>secretOrKey</code> from <code>JWT_SECRET</code></li>
+            <li><code>ignoreExpiration: false</code></li>
+            <li>
+              <code>validate(payload)</code> — <code>findUnique</code> user by
+              <code>payload.sub</code>; 401 if deleted; returns user without
+              <code>passwordHash</code> → becomes <code>req.user</code>
+            </li>
+          </ul>
+          <div class="callout">
+            <strong>Why re-fetch from DB?</strong> A token may outlive the user (account
+            deleted after issue). One indexed lookup per request keeps
+            <code>req.user</code> trustworthy.
+          </div>
+        </section>
+
+        <section id="step-5">
+          <h2><span class="step-num">5</span>JwtAuthGuard</h2>
+          <pre>@Injectable()
+export class JwtAuthGuard extends AuthGuard('jwt') {}</pre>
+          <p>
+            Thin wrapper around Passport’s JWT guard. Same behavior today; allows custom
+            401 handling or public-route metadata later without changing every controller.
+          </p>
+        </section>
+
+        <section id="step-6">
+          <h2><span class="step-num">6</span>CurrentUser Decorator</h2>
+          <pre>getMe(@CurrentUser() user: SafeUser): SafeUser</pre>
+          <p>
+            <code>createParamDecorator</code> reads <code>request.user</code> set by the
+            strategy. Cleaner than <code>@Req() req</code> in every handler.
+            <code>SafeUser</code> is imported with <code>import type</code> for
+            <code>emitDecoratorMetadata</code> + <code>isolatedModules</code>.
+          </p>
+        </section>
+
+        <section id="step-7">
+          <h2><span class="step-num">7</span>AuthController</h2>
+          <p><code>@Controller('auth')</code> — all routes prefixed with <code>/auth</code>.</p>
+          <ul>
+            <li>Swagger: <code>@ApiTags('auth')</code>, <code>@ApiOperation</code>, <code>@ApiResponse</code></li>
+            <li><code>GET /auth/me</code> — <code>@UseGuards(JwtAuthGuard)</code>, <code>@ApiBearerAuth()</code></li>
+          </ul>
+        </section>
+
+        <section id="step-8">
+          <h2><span class="step-num">8</span>AuthModule</h2>
+          <ul>
+            <li>
+              <code>JwtModule.registerAsync</code> — <code>JWT_SECRET</code>,
+              <code>JWT_EXPIRES_IN</code> from <code>ConfigService</code>
+            </li>
+            <li><code>PassportModule</code></li>
+            <li>Providers: <code>AuthService</code>, <code>JwtStrategy</code>, <code>JwtAuthGuard</code></li>
+            <li>Exports: <code>AuthService</code>, <code>JwtAuthGuard</code> (for other modules)</li>
+          </ul>
+          <p>
+            <code>AppModule</code> imports
+            <code>ConfigModule.forRoot({ isGlobal: true })</code>,
+            <code>PrismaModule</code>, <code>AuthModule</code>.
+          </p>
+        </section>
+
+        <section id="step-9">
+          <h2><span class="step-num">9</span>Swagger Bearer Auth</h2>
+          <p>In <code>main.ts</code>:</p>
+          <pre>.addBearerAuth({
+  type: 'http',
+  scheme: 'bearer',
+  bearerFormat: 'JWT',
+})</pre>
+          <p>
+            Swagger UI shows an <strong>Authorize</strong> button — paste the
+            <code>accessToken</code> from signup/signin to call
+            <code>GET /auth/me</code>.
+          </p>
+        </section>
+
+        <section id="step-10">
+          <h2><span class="step-num">10</span>Manual End-to-End Testing</h2>
+          <ol>
+            <li>
+              Start server: <code>cd apps/backend && npm run dev</code><br />
+              Expect: <code>Nest application successfully started</code> and routes mapped
+              (server stays idle — that is normal).
+            </li>
+            <li>Open <a href="http://localhost:3200/api/docs">http://localhost:3200/api/docs</a></li>
+            <li>
+              <strong>POST /auth/company/signup</strong> — example body:
+              <pre>{
+  "companyName": "Acme Recruiting",
+  "fullName": "Jane Doe",
+  "email": "jane@acme.com",
+  "password": "SecurePass1",
+  "industry": "Technology",
+  "size": "11-50"
+}</pre>
+              Verify: <code>user</code>, <code>company</code>, <code>accessToken</code>;
+              no <code>passwordHash</code>.
+            </li>
+            <li>
+              Supabase Studio — one row in <code>companies</code>, one in
+              <code>users</code>; <code>password_hash</code> starts with
+              <code>$2b$10$</code>.
+            </li>
+            <li>
+              <strong>POST /auth/signin</strong> — same credentials → new token, same shape.
+            </li>
+            <li>
+              Wrong password → <strong>401</strong> with
+              <code>"Invalid credentials"</code> (generic message).
+            </li>
+            <li>Click <strong>Authorize</strong> → paste token (no <code>Bearer </code> prefix).</li>
+            <li><strong>GET /auth/me</strong> → current user JSON.</li>
+            <li>Remove auth → <strong>GET /auth/me</strong> → <strong>401</strong>.</li>
+          </ol>
+        </section>
+
+        <section id="out-of-scope">
+          <h2>Out of Scope (v1)</h2>
+          <div class="callout warn">
+            Intentionally not implemented in this phase:
+          </div>
+          <ul>
+            <li>Supabase Auth integration</li>
+            <li>Refresh tokens (single access token, 7d expiry)</li>
+            <li>Email verification, password reset, 2FA</li>
+            <li>Google / LinkedIn OAuth</li>
+            <li>Candidate auth</li>
+            <li>Role-based guards beyond JWT (<code>@Roles('ADMIN')</code>)</li>
+            <li>Rate limiting on auth endpoints</li>
+            <li>Frontend changes</li>
+          </ul>
+        </section>
+
+        <footer>
+          HireFlow — Recruiter Authentication documentation. Generated for the
+          backend auth implementation under <code>apps/backend/src/auth/</code>.
+        </footer>
+      </main>
+    </div>
+  </body>
+</html>
