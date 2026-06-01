@@ -1,0 +1,733 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>HireFlow — Jobs CRUD (v1)</title>
+    <style>
+      :root {
+        --bg: #0f1419;
+        --surface: #1a2332;
+        --border: #2d3a4f;
+        --text: #e7ecf3;
+        --muted: #8b9cb3;
+        --accent: #3b82f6;
+        --accent-dim: #1e3a5f;
+        --success: #22c55e;
+        --warning: #f59e0b;
+        --danger: #ef4444;
+        --code-bg: #0d1117;
+        --font: 'Segoe UI', system-ui, -apple-system, sans-serif;
+        --mono: 'Cascadia Code', 'Fira Code', Consolas, monospace;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        font-family: var(--font);
+        background: var(--bg);
+        color: var(--text);
+        line-height: 1.65;
+      }
+
+      .layout {
+        display: grid;
+        grid-template-columns: 280px 1fr;
+        min-height: 100vh;
+      }
+
+      nav {
+        position: sticky;
+        top: 0;
+        height: 100vh;
+        overflow-y: auto;
+        padding: 1.5rem 1rem;
+        border-right: 1px solid var(--border);
+        background: var(--surface);
+      }
+
+      nav h2 {
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        color: var(--muted);
+        margin: 0 0 1rem 0.75rem;
+      }
+
+      nav a {
+        display: block;
+        padding: 0.4rem 0.75rem;
+        color: var(--muted);
+        text-decoration: none;
+        font-size: 0.88rem;
+        border-radius: 6px;
+      }
+
+      nav a:hover {
+        color: var(--text);
+        background: var(--accent-dim);
+      }
+
+      main {
+        max-width: 920px;
+        padding: 2.5rem 3rem 4rem;
+      }
+
+      h1 {
+        font-size: 2rem;
+        font-weight: 700;
+        margin: 0 0 0.5rem;
+        letter-spacing: -0.02em;
+      }
+
+      .subtitle {
+        color: var(--muted);
+        font-size: 1.05rem;
+        margin-bottom: 2rem;
+      }
+
+      h2 {
+        font-size: 1.45rem;
+        margin: 2.5rem 0 1rem;
+        padding-bottom: 0.5rem;
+        border-bottom: 1px solid var(--border);
+      }
+
+      h3 {
+        font-size: 1.1rem;
+        margin: 1.5rem 0 0.75rem;
+        color: #c5d0e0;
+      }
+
+      p,
+      li {
+        color: #c8d2e0;
+      }
+
+      ul,
+      ol {
+        padding-left: 1.25rem;
+      }
+
+      .badge {
+        display: inline-block;
+        font-size: 0.7rem;
+        font-weight: 600;
+        padding: 0.2rem 0.5rem;
+        border-radius: 4px;
+        background: var(--accent-dim);
+        color: var(--accent);
+        margin-right: 0.35rem;
+        vertical-align: middle;
+      }
+
+      .badge.post {
+        background: #14532d;
+        color: var(--success);
+      }
+
+      .badge.get {
+        background: #1e3a5f;
+        color: #60a5fa;
+      }
+
+      .badge.patch {
+        background: #422006;
+        color: var(--warning);
+      }
+
+      .badge.delete {
+        background: #450a0a;
+        color: var(--danger);
+      }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 0.9rem;
+        margin: 1rem 0;
+      }
+
+      th,
+      td {
+        text-align: left;
+        padding: 0.6rem 0.75rem;
+        border: 1px solid var(--border);
+      }
+
+      th {
+        background: var(--surface);
+        color: var(--muted);
+        font-weight: 600;
+      }
+
+      pre {
+        background: var(--code-bg);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 1rem 1.25rem;
+        overflow-x: auto;
+        font-family: var(--mono);
+        font-size: 0.82rem;
+        line-height: 1.5;
+      }
+
+      code {
+        font-family: var(--mono);
+        font-size: 0.88em;
+        background: var(--code-bg);
+        padding: 0.15em 0.4em;
+        border-radius: 4px;
+        border: 1px solid var(--border);
+      }
+
+      .flow {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 1.25rem;
+        font-family: var(--mono);
+        font-size: 0.8rem;
+        line-height: 1.6;
+        white-space: pre;
+        overflow-x: auto;
+      }
+
+      .tree {
+        font-family: var(--mono);
+        font-size: 0.85rem;
+        background: var(--code-bg);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 1rem 1.25rem;
+        line-height: 1.55;
+      }
+
+      .callout {
+        border-left: 4px solid var(--accent);
+        background: var(--accent-dim);
+        padding: 0.85rem 1.1rem;
+        margin: 1rem 0;
+        border-radius: 0 8px 8px 0;
+        font-size: 0.95rem;
+      }
+
+      .callout.warn {
+        border-color: var(--warning);
+        background: #422006;
+      }
+
+      .callout.danger {
+        border-color: var(--danger);
+        background: #450a0a;
+      }
+
+      .callout.success {
+        border-color: var(--success);
+        background: #14532d;
+      }
+
+      .step-num {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 1.75rem;
+        height: 1.75rem;
+        background: var(--accent);
+        color: #fff;
+        font-weight: 700;
+        font-size: 0.85rem;
+        border-radius: 50%;
+        margin-right: 0.5rem;
+      }
+
+      footer {
+        margin-top: 3rem;
+        padding-top: 1.5rem;
+        border-top: 1px solid var(--border);
+        color: var(--muted);
+        font-size: 0.85rem;
+      }
+
+      @media (max-width: 768px) {
+        .layout {
+          grid-template-columns: 1fr;
+        }
+        nav {
+          position: static;
+          height: auto;
+        }
+        main {
+          padding: 1.5rem;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="layout">
+      <nav>
+        <h2>Contents</h2>
+        <a href="#overview">Overview</a>
+        <a href="#endpoints">API Endpoints</a>
+        <a href="#tenant">Tenant Isolation</a>
+        <a href="#architecture">Architecture</a>
+        <a href="#files">File Structure</a>
+        <a href="#step-1">Step 1 — Prisma Schema</a>
+        <a href="#step-2">Step 2 — DTOs</a>
+        <a href="#step-3">Step 3 — JobsService</a>
+        <a href="#step-4">Step 4 — JobsController</a>
+        <a href="#step-5">Step 5 — JobsModule</a>
+        <a href="#step-6">Step 6 — Manual Testing</a>
+        <a href="#out-of-scope">Out of Scope (v1)</a>
+      </nav>
+
+      <main>
+        <h1>Jobs CRUD</h1>
+        <p class="subtitle">
+          HireFlow backend — tenant-scoped job postings with JWT protection, soft
+          delete, pagination, and filters. NestJS + Prisma + Supabase PostgreSQL.
+        </p>
+
+        <section id="overview">
+          <h2>Overview</h2>
+          <p>
+            After <a href="recruiter-authentication.html">recruiter authentication</a>
+            (company signup, sign-in, <code>GET /auth/me</code>), Jobs CRUD is the
+            next foundational piece. Every endpoint lives under
+            <code>/jobs</code>, requires a valid JWT (<code>JwtAuthGuard</code>),
+            and scopes all data to the authenticated user's
+            <code>companyId</code> from the token.
+          </p>
+          <p>
+            <strong>Base URL (dev):</strong>
+            <code>http://localhost:3200</code> &nbsp;|&nbsp;
+            <strong>Swagger:</strong>
+            <a href="http://localhost:3200/api/docs">http://localhost:3200/api/docs</a>
+          </p>
+        </section>
+
+        <section id="endpoints">
+          <h2>API Endpoints</h2>
+          <table>
+            <thead>
+              <tr>
+                <th>Method</th>
+                <th>Path</th>
+                <th>Purpose</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><span class="badge post">POST</span></td>
+                <td><code>/jobs</code></td>
+                <td>Create a job under the current user's company</td>
+              </tr>
+              <tr>
+                <td><span class="badge get">GET</span></td>
+                <td><code>/jobs</code></td>
+                <td>List company jobs (pagination, filters, search)</td>
+              </tr>
+              <tr>
+                <td><span class="badge get">GET</span></td>
+                <td><code>/jobs/:id</code></td>
+                <td>Get one job (tenant-scoped)</td>
+              </tr>
+              <tr>
+                <td><span class="badge patch">PATCH</span></td>
+                <td><code>/jobs/:id</code></td>
+                <td>Partial update (tenant-scoped)</td>
+              </tr>
+              <tr>
+                <td><span class="badge delete">DELETE</span></td>
+                <td><code>/jobs/:id</code></td>
+                <td>Soft delete — sets <code>deletedAt</code>, returns 200 + body</td>
+              </tr>
+            </tbody>
+          </table>
+        </section>
+
+        <section id="tenant">
+          <h2>Tenant Isolation</h2>
+          <div class="callout danger">
+            <strong>Never trust the client for <code>companyId</code>.</strong>
+            It is never accepted in create/update DTOs. It always comes from the JWT
+            via <code>@CurrentUser()</code> → <code>user.companyId</code>.
+          </div>
+          <p>Every service method receives <code>companyId</code> as a parameter derived from the authenticated user, never from request body or query.</p>
+          <h3>404 vs 403</h3>
+          <p>
+            When Company B's token tries to access Company A's job by UUID, the API
+            returns <strong>404 Not Found</strong> — not 403 Forbidden. The query is:
+          </p>
+          <pre>findFirst({ where: { id, companyId, deletedAt: null } })</pre>
+          <p>
+            If the job exists but belongs to another tenant, no row matches → same
+            response as a non-existent ID. This avoids leaking whether a UUID exists
+            in the system.
+          </p>
+          <div class="callout warn">
+            <strong>Do not use</strong> <code>findUnique({ where: { id } })</code> for
+            tenant reads — that loads any job by ID regardless of company.
+          </div>
+          <h3>What happens if you forget <code>companyId</code>?</h3>
+          <p>
+            A cross-tenant data leak: any authenticated user could read or mutate
+            another company's jobs by guessing UUIDs. This is catastrophic in
+            production — always include <code>companyId</code> in the
+            <code>where</code> clause.
+          </p>
+        </section>
+
+        <section id="architecture">
+          <h2>Architecture</h2>
+          <div class="flow">Client (Swagger / frontend)
+    │  Authorization: Bearer &lt;JWT&gt;
+    ▼
+JobsController  @UseGuards(JwtAuthGuard)
+    │  @CurrentUser() → SafeUser (id, companyId, …)
+    ▼
+JobsService     companyId from user, never from DTO
+    ▼
+PrismaService   Job queries always filter companyId + deletedAt: null
+    ▼
+Supabase PostgreSQL  jobs table (snake_case columns)</div>
+        </section>
+
+        <section id="files">
+          <h2>File Structure</h2>
+          <div class="tree">apps/backend/
+├── prisma/
+│   ├── schema.prisma          # Job model, enums, relations
+│   └── migrations/
+│       └── …_add_jobs_table/
+└── src/
+    ├── app.module.ts          # imports JobsModule
+    └── jobs/
+        ├── jobs.module.ts
+        ├── jobs.controller.ts
+        ├── jobs.service.ts
+        └── dto/
+            ├── create-job.dto.ts
+            ├── update-job.dto.ts
+            └── list-jobs-query.dto.ts</div>
+        </section>
+
+        <section id="step-1">
+          <h2><span class="step-num">1</span>Prisma Schema + Migration</h2>
+          <p>
+            Migration: <code>npx prisma migrate dev --name add-jobs-table</code><br />
+            Applied as <code>20260601105805_add_jobs_table</code>
+          </p>
+
+          <h3>New enums</h3>
+          <table>
+            <thead>
+              <tr><th>Enum</th><th>Values</th></tr>
+            </thead>
+            <tbody>
+              <tr><td><code>JobType</code></td><td>REMOTE, HYBRID, ONSITE</td></tr>
+              <tr><td><code>EmploymentType</code></td><td>FULL_TIME, PART_TIME, CONTRACT, INTERNSHIP</td></tr>
+              <tr><td><code>JobStatus</code></td><td>DRAFT, PUBLISHED, CLOSED</td></tr>
+            </tbody>
+          </table>
+
+          <h3>Job model (key fields)</h3>
+          <table>
+            <thead>
+              <tr><th>Field</th><th>Purpose</th></tr>
+            </thead>
+            <tbody>
+              <tr><td><code>companyId</code></td><td>Tenant FK — filtered on every query</td></tr>
+              <tr><td><code>createdById</code></td><td>FK to User who created the job</td></tr>
+              <tr><td><code>status</code></td><td>Default DRAFT; PUBLISHED sets <code>publishedAt</code> in service</td></tr>
+              <tr><td><code>deletedAt</code></td><td>NULL = active; non-null = soft-deleted</td></tr>
+              <tr><td><code>jobEmbedding</code></td><td><code>Unsupported("vector(1536)")?</code> — reserved for ML phase</td></tr>
+            </tbody>
+          </table>
+
+          <h3>Unsupported("vector(1536)")</h3>
+          <p>
+            Prisma does not natively model pgvector columns. <code>Unsupported</code>
+            tells Prisma to include the column in SQL migrations but not expose it on
+            the generated client for normal CRUD. The migration runs
+            <code>CREATE EXTENSION IF NOT EXISTS vector</code> and creates
+            <code>job_embedding vector(1536)</code>. Stays NULL until embedding
+            generation is built.
+          </p>
+
+          <h3>Relations</h3>
+          <ul>
+            <li><code>Company.jobs</code> — one-to-many</li>
+            <li><code>User.createdJobs</code> — <code>@relation("UserCreatedJobs")</code> named for future User→Job relations (e.g. assignments)</li>
+            <li><code>onDelete: Cascade</code> on company; <code>Restrict</code> on creator</li>
+          </ul>
+
+          <h3>Indexes</h3>
+          <ul>
+            <li><code>@@index([companyId])</code></li>
+            <li><code>@@index([companyId, deletedAt])</code> — speeds up <code>WHERE company_id = ? AND deleted_at IS NULL</code> (the default list query)</li>
+          </ul>
+
+          <h3>Generated SQL (summary)</h3>
+          <pre>CREATE EXTENSION IF NOT EXISTS vector;
+CREATE TYPE "JobType" AS ENUM (...);
+CREATE TYPE "EmploymentType" AS ENUM (...);
+CREATE TYPE "JobStatus" AS ENUM (...);
+CREATE TABLE "jobs" ( ... snake_case columns ... );
+CREATE INDEX "jobs_company_id_idx" ON "jobs"("company_id");
+CREATE INDEX "jobs_company_id_deleted_at_idx" ON "jobs"("company_id", "deleted_at");
+-- FKs to companies and users</pre>
+          <p>
+            Migration names like <code>add-jobs-table</code> make git history readable
+            when debugging schema drift across environments.
+          </p>
+        </section>
+
+        <section id="step-2">
+          <h2><span class="step-num">2</span>DTOs</h2>
+          <p>Location: <code>apps/backend/src/jobs/dto/</code></p>
+
+          <h3>create-job.dto.ts</h3>
+          <ul>
+            <li><code>title</code> — 2–200 chars</li>
+            <li><code>description</code> — min 20 chars</li>
+            <li><code>requirements</code> — min 10 chars</li>
+            <li><code>location</code> — 2–100 chars</li>
+            <li><code>jobType</code>, <code>employmentType</code> — <code>@IsEnum</code> from Prisma</li>
+            <li><code>salaryMin</code> / <code>salaryMax</code> — optional ints ≥ 0; <code>SalaryRangeConstraint</code> ensures max ≥ min when both set</li>
+            <li><code>salaryCurrency</code> — optional 3-letter ISO (<code>@Matches(/^[A-Z]{3}$/)</code>)</li>
+            <li><code>status</code> — optional; service defaults to DRAFT</li>
+            <li><strong>No <code>companyId</code></strong> — rejected by <code>forbidNonWhitelisted: true</code></li>
+          </ul>
+
+          <h3>update-job.dto.ts</h3>
+          <pre>export class UpdateJobDto extends PartialType(CreateJobDto) {}</pre>
+          <p>
+            <code>PartialType</code> from <code>@nestjs/mapped-types</code> makes every
+            create field optional and copies validation decorators. PATCH can send only
+            changed fields. One source of truth for validation rules.
+          </p>
+
+          <h3>list-jobs-query.dto.ts</h3>
+          <p>Separate DTO because query params are not JSON bodies.</p>
+          <table>
+            <thead>
+              <tr><th>Param</th><th>Default</th><th>Notes</th></tr>
+            </thead>
+            <tbody>
+              <tr><td><code>page</code></td><td>1</td><td><code>@Transform</code> → number</td></tr>
+              <tr><td><code>pageSize</code></td><td>20</td><td>max 100</td></tr>
+              <tr><td><code>status</code></td><td>—</td><td>optional JobStatus filter</td></tr>
+              <tr><td><code>search</code></td><td>—</td><td>title or location, case-insensitive</td></tr>
+              <tr><td><code>sortBy</code></td><td>createdAt</td><td>createdAt | title | publishedAt</td></tr>
+              <tr><td><code>sortOrder</code></td><td>desc</td><td>asc | desc</td></tr>
+            </tbody>
+          </table>
+          <div class="callout">
+            HTTP query strings are always strings (<code>?page=2</code> → <code>"2"</code>).
+            <code>@Transform</code> + <code>ValidationPipe({ transform: true })</code>
+            coerces to numbers before <code>@IsInt()</code> runs.
+          </div>
+        </section>
+
+        <section id="step-3">
+          <h2><span class="step-num">3</span>JobsService</h2>
+          <p><code>apps/backend/src/jobs/jobs.service.ts</code></p>
+
+          <h3>create(dto, user)</h3>
+          <ul>
+            <li>Sets <code>companyId: user.companyId</code>, <code>createdById: user.id</code></li>
+            <li><code>status</code> defaults to DRAFT if omitted</li>
+            <li>If status is PUBLISHED → <code>publishedAt: new Date()</code></li>
+            <li><code>salaryCurrency</code> defaults to USD in service if omitted</li>
+          </ul>
+
+          <h3>findAll(query, companyId)</h3>
+          <pre>where: { companyId, deletedAt: null, …filters }
+orderBy: { [sortBy]: sortOrder }
+skip / take for pagination
+$transaction([ findMany, count ])  // parallel</pre>
+          <p>Returns:</p>
+          <pre>{ data, total, page, pageSize, totalPages }</pre>
+          <p>
+            Search uses Prisma <code>OR</code> with
+            <code>contains</code> + <code>mode: 'insensitive'</code> on
+            <code>title</code> and <code>location</code>.
+          </p>
+
+          <h3>findOne(id, companyId)</h3>
+          <pre>findFirst({ where: { id, companyId, deletedAt: null } })
+→ NotFoundException('Job not found') if missing</pre>
+
+          <h3>update(id, dto, companyId)</h3>
+          <ul>
+            <li>Calls <code>findOne</code> first (ownership check)</li>
+            <li>If <code>dto.status === PUBLISHED</code> and existing <code>publishedAt</code> is null → set <code>publishedAt: new Date()</code></li>
+          </ul>
+
+          <h3>softDelete(id, companyId)</h3>
+          <ul>
+            <li>Calls <code>findOne</code> first</li>
+            <li>Sets <code>deletedAt: new Date()</code></li>
+            <li>Returns <code>{ id, deletedAt }</code></li>
+          </ul>
+        </section>
+
+        <section id="step-4">
+          <h2><span class="step-num">4</span>JobsController</h2>
+          <p><code>apps/backend/src/jobs/jobs.controller.ts</code></p>
+          <ul>
+            <li><code>@Controller('jobs')</code></li>
+            <li><code>@UseGuards(JwtAuthGuard)</code> at class level — all routes protected</li>
+            <li><code>@ApiTags('Jobs')</code>, <code>@ApiBearerAuth()</code></li>
+            <li><code>ParseUUIDPipe</code> on <code>:id</code> — rejects malformed IDs with 400 before hitting the DB</li>
+            <li><code>DELETE</code> uses <code>@HttpCode(200)</code> because the response body includes <code>{ id, deletedAt }</code> (not 204 No Content)</li>
+          </ul>
+          <div class="flow">POST   /jobs           @CurrentUser + CreateJobDto
+GET    /jobs           @CurrentUser + ListJobsQueryDto
+GET    /jobs/:id       ParseUUIDPipe + @CurrentUser
+PATCH  /jobs/:id       ParseUUIDPipe + UpdateJobDto + @CurrentUser
+DELETE /jobs/:id       ParseUUIDPipe + @CurrentUser → 200 + { id, deletedAt }</div>
+        </section>
+
+        <section id="step-5">
+          <h2><span class="step-num">5</span>JobsModule</h2>
+          <pre>@Module({
+  imports: [AuthModule],   // JwtAuthGuard + JwtStrategy
+  controllers: [JobsController],
+  providers: [JobsService],
+  exports: [JobsService],
+})
+export class JobsModule {}</pre>
+          <p>
+            <code>PrismaModule</code> is <code>@Global()</code> — no import needed.
+            <code>AppModule</code> imports <code>JobsModule</code>.
+          </p>
+        </section>
+
+        <section id="step-6">
+          <h2><span class="step-num">6</span>Manual End-to-End Testing (Swagger)</h2>
+          <ol>
+            <li>
+              Start server:
+              <code>cd apps/backend && npm run dev</code>
+            </li>
+            <li>
+              Open
+              <a href="http://localhost:3200/api/docs">http://localhost:3200/api/docs</a>
+            </li>
+            <li>
+              <strong>Sign up Company A</strong> — <code>POST /auth/company/signup</code>
+              <pre>{
+  "companyName": "Acme Corp",
+  "fullName": "Alice Admin",
+  "email": "alice@acme-test.com",
+  "password": "SecurePass1"
+}</pre>
+              Save <code>accessToken</code> as <strong>Token-A</strong>.
+            </li>
+            <li>
+              <strong>Sign up Company B</strong> — different email (e.g.
+              <code>bob@beta-test.com</code>). Save token as <strong>Token-B</strong>.
+            </li>
+            <li>
+              Authorize with <strong>Token-A</strong>. Create 3 jobs via
+              <code>POST /jobs</code>:
+              <pre>{
+  "title": "Senior Backend Engineer",
+  "description": "Build scalable APIs with NestJS and PostgreSQL for our hiring platform.",
+  "requirements": "- 5+ years Node.js\n- PostgreSQL\n- REST API design",
+  "location": "Remote",
+  "jobType": "REMOTE",
+  "employmentType": "FULL_TIME",
+  "salaryMin": 120000,
+  "salaryMax": 180000,
+  "status": "PUBLISHED"
+}</pre>
+              Vary titles/status: one DRAFT, two PUBLISHED (e.g. Product Designer, Data Scientist).
+            </li>
+            <li>
+              <strong>GET /jobs</strong> — expect 3 jobs, paginated wrapper with
+              <code>data</code>, <code>total</code>, etc.
+            </li>
+            <li>
+              <strong>GET /jobs/{id}</strong> — copy an ID from the list; expect 200 + job JSON.
+            </li>
+            <li>
+              <strong>PATCH /jobs/{id}</strong> — e.g. <code>{ "title": "Staff Backend Engineer" }</code> — verify update.
+            </li>
+          </ol>
+
+          <h3>Critical tenant isolation test</h3>
+          <ol>
+            <li>Swagger <strong>Authorize</strong> → paste <strong>Token-B</strong>.</li>
+            <li><strong>GET /jobs</strong> → expect <strong>zero jobs</strong> (empty <code>data</code>).</li>
+            <li>
+              <strong>GET /jobs/{company-a-job-uuid}</strong> → expect
+              <strong>404</strong> Not Found (not 403, not 200 with leaked data).
+            </li>
+            <li><strong>PATCH</strong> and <strong>DELETE</strong> on Company A's job ID → expect <strong>404</strong> each.</li>
+          </ol>
+
+          <h3>Soft delete test (Token-A)</h3>
+          <ol>
+            <li>
+              <strong>DELETE /jobs/{id}</strong> on your own job →
+              <code>200</code> with <code>{ "id": "...", "deletedAt": "..." }</code>.
+            </li>
+            <li><strong>GET /jobs</strong> → deleted job no longer in list.</li>
+            <li><strong>GET /jobs/{deleted-id}</strong> → <strong>404</strong>.</li>
+            <li>
+              Supabase Studio → <code>jobs</code> table → row still exists with
+              <code>deleted_at</code> populated (data retained, hidden from API).
+            </li>
+          </ol>
+
+          <div class="callout success">
+            If any isolation test returns 200 for another tenant's job, stop and fix
+            before shipping — that is a production data leak.
+          </div>
+
+          <h3>Example create body (DRAFT)</h3>
+          <pre>{
+  "title": "Product Designer",
+  "description": "Lead product design for our recruiter dashboard and candidate experience.",
+  "requirements": "- Figma\n- Design systems\n- User research",
+  "location": "New York, NY",
+  "jobType": "HYBRID",
+  "employmentType": "FULL_TIME",
+  "status": "DRAFT"
+}</pre>
+        </section>
+
+        <section id="out-of-scope">
+          <h2>Out of Scope (v1)</h2>
+          <div class="callout warn">
+            Intentionally not implemented in this phase:
+          </div>
+          <ul>
+            <li>File upload (resumes, logos)</li>
+            <li>Embedding generation (<code>jobEmbedding</code> stays null)</li>
+            <li>Candidate / Application models</li>
+            <li>Background jobs / queues</li>
+            <li>Per-endpoint rate limiting</li>
+            <li>Role-based guards beyond JWT</li>
+            <li>Caching</li>
+            <li>Frontend changes</li>
+          </ul>
+        </section>
+
+        <footer>
+          HireFlow — Jobs CRUD documentation. Implementation under
+          <code>apps/backend/src/jobs/</code> and
+          <code>apps/backend/prisma/schema.prisma</code>.
+          Prerequisite:
+          <a href="recruiter-authentication.html">Recruiter Authentication</a>.
+        </footer>
+      </main>
+    </div>
+  </body>
+</html>

@@ -13,6 +13,25 @@ enum Role {
   RECRUITER
 }
 
+enum JobType {
+  REMOTE
+  HYBRID
+  ONSITE
+}
+
+enum EmploymentType {
+  FULL_TIME
+  PART_TIME
+  CONTRACT
+  INTERNSHIP
+}
+
+enum JobStatus {
+  DRAFT
+  PUBLISHED
+  CLOSED
+}
+
 model Company {
   id         String   @id @default(uuid())
   name       String
@@ -25,6 +44,7 @@ model Company {
   updatedAt  DateTime @updatedAt @map("updated_at")
 
   users User[]
+  jobs  Job[]
 
   @@map("companies")
 }
@@ -41,7 +61,36 @@ model User {
   createdAt    DateTime  @default(now()) @map("created_at")
   updatedAt    DateTime  @updatedAt @map("updated_at")
 
-  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  company      Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  createdJobs  Job[]   @relation("UserCreatedJobs")
 
   @@map("users")
+}
+
+model Job {
+  id             String                      @id @default(uuid())
+  companyId      String                      @map("company_id")
+  createdById    String                      @map("created_by_id")
+  title          String
+  description    String
+  requirements   String
+  location       String
+  jobType        JobType                     @map("job_type")
+  employmentType EmploymentType              @map("employment_type")
+  salaryMin      Int?                        @map("salary_min")
+  salaryMax      Int?                        @map("salary_max")
+  salaryCurrency String                      @default("USD") @map("salary_currency")
+  status         JobStatus                   @default(DRAFT)
+  publishedAt    DateTime?                   @map("published_at")
+  deletedAt      DateTime?                   @map("deleted_at")
+  jobEmbedding   Unsupported("vector(1536)")? @map("job_embedding")
+  createdAt      DateTime                    @default(now()) @map("created_at")
+  updatedAt      DateTime                    @updatedAt @map("updated_at")
+
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  createdBy User    @relation("UserCreatedJobs", fields: [createdById], references: [id], onDelete: Restrict)
+
+  @@index([companyId])
+  @@index([companyId, deletedAt])
+  @@map("jobs")
 }
