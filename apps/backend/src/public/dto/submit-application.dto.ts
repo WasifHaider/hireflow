@@ -40,11 +40,17 @@ export class SubmitApplicationDto {
   @IsOptional()
   @IsString()
   @MaxLength(30)
+  @Transform(({ value }: { value: unknown }) =>
+    typeof value === 'string' && value.trim() === '' ? undefined : value,
+  )
   phone?: string;
 
   @ApiPropertyOptional({ example: 'https://linkedin.com/in/marcus' })
   @IsOptional()
   @IsUrl()
+  @Transform(({ value }: { value: unknown }) =>
+    typeof value === 'string' && value.trim() === '' ? undefined : value,
+  )
   linkedinUrl?: string;
 
   @ApiPropertyOptional({
@@ -54,5 +60,8 @@ export class SubmitApplicationDto {
   @IsOptional()
   @IsString()
   @MaxLength(5000)
+  @Transform(({ value }: { value: unknown }) =>
+    typeof value === 'string' && value.trim() === '' ? undefined : value,
+  )
   coverLetter?: string;
 }

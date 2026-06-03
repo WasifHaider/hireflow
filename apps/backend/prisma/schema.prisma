@@ -113,8 +113,6 @@ model Candidate {
   fullName    String   @map("full_name")
   phone       String?
   linkedinUrl String?  @map("linkedin_url")
-  resumeUrl   String?  @map("resume_url")
-  resumeText  String?  @map("resume_text")
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
 
@@ -132,6 +130,11 @@ model Application {
   aiFitScore      Int?             @map("ai_fit_score")
   aiScoreDetails  Json?            @map("ai_score_details")
   coverLetter     String?          @map("cover_letter")
+  resumeUrl       String?          @map("resume_url")
+  resumeText      String?          @map("resume_text")
+  resumeFilename  String?          @map("resume_filename")
+  resumeMimeType  String?          @map("resume_mime_type")
+  resumeSizeBytes Int?             @map("resume_size_bytes")
   appliedAt       DateTime         @default(now()) @map("applied_at")
   updatedAt       DateTime         @updatedAt @map("updated_at")
 

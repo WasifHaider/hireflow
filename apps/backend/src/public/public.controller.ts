@@ -7,13 +7,19 @@ import {
   Param,
   ParseUUIDPipe,
   Post,
+  UploadedFile,
+  UseInterceptors,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import {
+  ApiBody,
+  ApiConsumes,
   ApiOperation,
   ApiResponse,
   ApiTags,
 } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
+import { ResumeFilePipe } from '../storage/pipes/resume-file.pipe';
 import { PublicCompanyResponseDto } from './dto/public-company-response.dto';
 import { PublicJobResponseDto } from './dto/public-job-response.dto';
 import { SubmitApplicationDto } from './dto/submit-application.dto';
@@ -61,8 +67,37 @@ export class PublicController {
 
   @Post('applications')
   @HttpCode(HttpStatus.CREATED)
+  @UseInterceptors(
+    FileInterceptor('resume', {
+      limits: { fileSize: 5 * 1024 * 1024 },
+    }),
+  )
   @Throttle({ default: { limit: 5, ttl: 60000 } })
-  @ApiOperation({ summary: 'Submit an anonymous job application' })
+  @ApiConsumes('multipart/form-data')
+  @ApiOperation({ summary: 'Submit an anonymous job application with resume' })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      required: ['resume', 'jobId', 'fullName', 'email'],
+      properties: {
+        resume: {
+          type: 'string',
+          format: 'binary',
+          description: 'PDF resume (max 5MB)',
+        },
+        jobId: {
+          type: 'string',
+          format: 'uuid',
+          description: 'ID of the published job being applied to',
+        },
+        fullName: { type: 'string', minLength: 2, maxLength: 100 },
+        email: { type: 'string', format: 'email' },
+        phone: { type: 'string', maxLength: 30 },
+        linkedinUrl: { type: 'string', format: 'uri' },
+        coverLetter: { type: 'string', maxLength: 5000 },
+      },
+    },
+  })
   @ApiResponse({
     status: 201,
     description: 'Application submitted',
@@ -77,7 +112,8 @@ export class PublicController {
   })
   submitApplication(
     @Body() dto: SubmitApplicationDto,
+    @UploadedFile(ResumeFilePipe) resume: Express.Multer.File,
   ): Promise<SubmitApplicationResponseDto> {
-    return this.publicService.submitApplication(dto);
+    return this.publicService.submitApplication(dto, resume);
   }
 }

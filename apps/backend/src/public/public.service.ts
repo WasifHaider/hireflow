@@ -9,6 +9,7 @@ import {
   Prisma,
 } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import { StorageService } from '../storage/storage.service';
 import { PublicCompanyResponseDto } from './dto/public-company-response.dto';
 import { PublicJobResponseDto } from './dto/public-job-response.dto';
 import { SubmitApplicationDto } from './dto/submit-application.dto';
@@ -50,7 +51,10 @@ const publicJobSelect = {
 
 @Injectable()
 export class PublicService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly storageService: StorageService,
+  ) {}
 
   async getCompanyBySlug(slug: string): Promise<PublicCompanyResponseDto> {
     const company = await this.prisma.company.findUnique({
@@ -88,6 +92,7 @@ export class PublicService {
 
   async submitApplication(
     dto: SubmitApplicationDto,
+    resume: Express.Multer.File,
   ): Promise<SubmitApplicationResponseDto> {
     const job = await this.prisma.job.findFirst({
       where: {
@@ -104,32 +109,43 @@ export class PublicService {
       );
     }
 
-    try {
-      const application = await this.prisma.$transaction(async (tx) => {
-        const candidate = await tx.candidate.upsert({
-          where: { email: dto.email },
-          create: {
-            email: dto.email,
-            fullName: dto.fullName,
-            phone: dto.phone,
-            linkedinUrl: dto.linkedinUrl,
-          },
-          update: {
-            fullName: dto.fullName,
-            phone: dto.phone,
-            linkedinUrl: dto.linkedinUrl,
-          },
-        });
+    const candidate = await this.prisma.candidate.upsert({
+      where: { email: dto.email },
+      create: {
+        email: dto.email,
+        fullName: dto.fullName,
+        phone: dto.phone,
+        linkedinUrl: dto.linkedinUrl,
+      },
+      update: {
+        fullName: dto.fullName,
+        phone: dto.phone,
+        linkedinUrl: dto.linkedinUrl,
+      },
+    });
 
-        return tx.application.create({
-          data: {
-            jobId: job.id,
-            candidateId: candidate.id,
-            companyId: job.companyId,
-            coverLetter: dto.coverLetter,
-            currentStage: ApplicationStage.APPLIED,
-          },
-        });
+    const { path, size } = await this.storageService.uploadResume({
+      companyId: job.companyId,
+      jobId: job.id,
+      candidateId: candidate.id,
+      fileBuffer: resume.buffer,
+      originalFilename: resume.originalname,
+      mimeType: resume.mimetype,
+    });
+
+    try {
+      const application = await this.prisma.application.create({
+        data: {
+          jobId: job.id,
+          candidateId: candidate.id,
+          companyId: job.companyId,
+          coverLetter: dto.coverLetter,
+          resumeUrl: path,
+          resumeFilename: resume.originalname,
+          resumeMimeType: resume.mimetype,
+          resumeSizeBytes: size,
+          currentStage: ApplicationStage.APPLIED,
+        },
       });
 
       return {
@@ -138,12 +154,15 @@ export class PublicService {
         message: 'Your application has been submitted successfully.',
       };
     } catch (error) {
+      await this.storageService.deleteResume(path);
+
       if (
         error instanceof Prisma.PrismaClientKnownRequestError &&
         error.code === 'P2002'
       ) {
         throw new ConflictException('You have already applied to this job');
       }
+
       throw error;
     }
   }

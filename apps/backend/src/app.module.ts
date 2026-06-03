@@ -5,9 +5,11 @@ import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { AuthModule } from './auth/auth.module';
+import { ApplicationsModule } from './applications/applications.module';
 import { JobsModule } from './jobs/jobs.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { PublicModule } from './public/public.module';
+import { StorageModule } from './storage/storage.module';
 
 @Module({
   imports: [
@@ -19,7 +21,9 @@ import { PublicModule } from './public/public.module';
       },
     ]),
     PrismaModule,
+    StorageModule,
     AuthModule,
+    ApplicationsModule,
     JobsModule,
     PublicModule,
   ],
