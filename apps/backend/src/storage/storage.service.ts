@@ -102,6 +102,26 @@ export class StorageService {
     return data.signedUrl;
   }
 
+  /**
+   * Download a resume's raw bytes. Mints a short-lived signed URL and fetches
+   * it rather than streaming through the SDK, so the same tenant-checked URL
+   * path is exercised everywhere and the bucket stays private.
+   */
+  async downloadResume(path: string): Promise<Buffer> {
+    const signedUrl = await this.getSignedUrl(path, 120);
+
+    const response = await fetch(signedUrl);
+    if (!response.ok) {
+      this.logger.error(
+        `Failed to download resume at ${path}: HTTP ${response.status}`,
+      );
+      throw new InternalServerErrorException('Failed to download resume');
+    }
+
+    const arrayBuffer = await response.arrayBuffer();
+    return Buffer.from(arrayBuffer);
+  }
+
   private sanitizeFilename(filename: string): string {
     const basename = filename.replace(/^.*[\\/]/, '');
     const stem = basename
