@@ -146,6 +146,7 @@ export class AuthService {
   private generateToken(user: User): string {
     const payload: JwtPayload = {
       sub: user.id,
+      userType: 'recruiter',
       companyId: user.companyId,
       email: user.email,
       role: user.role,

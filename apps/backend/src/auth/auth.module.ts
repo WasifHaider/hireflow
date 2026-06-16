@@ -5,7 +5,11 @@ import { PassportModule } from '@nestjs/passport';
 import type { StringValue } from 'ms';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
+import { CandidateAuthController } from './candidate/candidate-auth.controller';
+import { CandidateAuthService } from './candidate/candidate-auth.service';
+import { CandidateAuthGuard } from './guards/candidate-auth.guard';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
+import { RecruiterAuthGuard } from './guards/recruiter-auth.guard';
 import { JwtStrategy } from './strategies/jwt.strategy';
 
 @Module({
@@ -26,8 +30,20 @@ import { JwtStrategy } from './strategies/jwt.strategy';
       }),
     }),
   ],
-  controllers: [AuthController],
-  providers: [AuthService, JwtStrategy, JwtAuthGuard],
-  exports: [AuthService, JwtAuthGuard],
+  controllers: [AuthController, CandidateAuthController],
+  providers: [
+    AuthService,
+    CandidateAuthService,
+    JwtStrategy,
+    JwtAuthGuard,
+    RecruiterAuthGuard,
+    CandidateAuthGuard,
+  ],
+  exports: [
+    AuthService,
+    JwtAuthGuard,
+    RecruiterAuthGuard,
+    CandidateAuthGuard,
+  ],
 })
 export class AuthModule {}

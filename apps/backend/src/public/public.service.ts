@@ -1,6 +1,7 @@
 import {
   ConflictException,
   Injectable,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
 import {
@@ -8,6 +9,7 @@ import {
   JobStatus,
   Prisma,
 } from '@prisma/client';
+import { ApplicationScoringProducer } from '../queues/application-scoring/application-scoring.producer';
 import { PrismaService } from '../prisma/prisma.service';
 import { StorageService } from '../storage/storage.service';
 import { PublicCompanyResponseDto } from './dto/public-company-response.dto';
@@ -51,9 +53,12 @@ const publicJobSelect = {
 
 @Injectable()
 export class PublicService {
+  private readonly logger = new Logger(PublicService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly storageService: StorageService,
+    private readonly scoringProducer: ApplicationScoringProducer,
   ) {}
 
   async getCompanyBySlug(slug: string): Promise<PublicCompanyResponseDto> {
@@ -147,6 +152,20 @@ export class PublicService {
           currentStage: ApplicationStage.APPLIED,
         },
       });
+
+      try {
+        await this.scoringProducer.enqueueScoreApplication({
+          applicationId: application.id,
+          jobId: job.id,
+          candidateId: candidate.id,
+          resumeStoragePath: path,
+        });
+      } catch (enqueueError) {
+        this.logger.error(
+          `Failed to enqueue scoring for application ${application.id}`,
+          enqueueError instanceof Error ? enqueueError.stack : enqueueError,
+        );
+      }
 
       return {
         applicationId: application.id,

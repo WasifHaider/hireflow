@@ -6,14 +6,14 @@ import {
   ApiTags,
 } from '@nestjs/swagger';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
-import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { RecruiterAuthGuard } from '../auth/guards/recruiter-auth.guard';
 import type { SafeUser } from '../auth/types/safe-user.type';
 import { ApplicationsService } from './applications.service';
 import { ResumeUrlResponseDto } from './dto/resume-url-response.dto';
 
 @ApiTags('Applications')
 @ApiBearerAuth()
-@UseGuards(JwtAuthGuard)
+@UseGuards(RecruiterAuthGuard)
 @Controller('applications')
 export class ApplicationsController {
   constructor(private readonly applicationsService: ApplicationsService) {}

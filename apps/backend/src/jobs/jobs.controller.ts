@@ -19,7 +19,7 @@ import {
   ApiTags,
 } from '@nestjs/swagger';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
-import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { RecruiterAuthGuard } from '../auth/guards/recruiter-auth.guard';
 import type { SafeUser } from '../auth/types/safe-user.type';
 import { CreateJobDto } from './dto/create-job.dto';
 import { ListJobsQueryDto } from './dto/list-jobs-query.dto';
@@ -28,7 +28,7 @@ import { JobsService } from './jobs.service';
 
 @ApiTags('Jobs')
 @ApiBearerAuth()
-@UseGuards(JwtAuthGuard)
+@UseGuards(RecruiterAuthGuard)
 @Controller('jobs')
 export class JobsController {
   constructor(private readonly jobsService: JobsService) {}

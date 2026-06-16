@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>HireFlow · Sub-phase D Plan — Candidate Auth</title>
+<style>
+  :root {
+    --indigo: #4F46E5;
+    --indigo-dark: #3730A3;
+    --indigo-soft: #EEF2FF;
+    --ink: #1E2030;
+    --muted: #5B6072;
+    --line: #E5E7EB;
+    --green: #059669;
+    --amber: #B45309;
+    --red: #DC2626;
+    --code-bg: #F6F7FB;
+  }
+  * { box-sizing: border-box; }
+  body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    color: var(--ink);
+    margin: 0;
+    line-height: 1.6;
+    background: #FBFBFD;
+  }
+  header {
+    background: linear-gradient(135deg, var(--indigo) 0%, var(--indigo-dark) 100%);
+    color: #fff;
+    padding: 40px 32px;
+  }
+  header .tag {
+    display: inline-block;
+    font-size: 12px;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    background: rgba(255,255,255,.18);
+    padding: 4px 10px;
+    border-radius: 999px;
+    margin-bottom: 12px;
+  }
+  header h1 { margin: 0 0 6px; font-size: 28px; }
+  header p { margin: 0; opacity: .9; max-width: 760px; }
+  main { max-width: 920px; margin: 0 auto; padding: 32px; }
+  section { margin-bottom: 36px; }
+  h2 {
+    font-size: 20px;
+    border-left: 4px solid var(--indigo);
+    padding-left: 12px;
+    margin: 0 0 16px;
+  }
+  h3 { font-size: 15px; margin: 20px 0 8px; color: var(--indigo-dark); }
+  .step {
+    background: #fff;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 20px 24px;
+    margin-bottom: 18px;
+    box-shadow: 0 1px 2px rgba(16,24,40,.04);
+  }
+  .step .num {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 26px; height: 26px;
+    background: var(--indigo);
+    color: #fff;
+    border-radius: 7px;
+    font-size: 13px;
+    font-weight: 700;
+    margin-right: 8px;
+  }
+  code, pre {
+    font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+    font-size: 13px;
+  }
+  code { background: var(--code-bg); padding: 1px 5px; border-radius: 4px; color: var(--indigo-dark); }
+  pre {
+    background: var(--code-bg);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 14px 16px;
+    overflow-x: auto;
+    line-height: 1.45;
+  }
+  pre code { background: none; padding: 0; color: var(--ink); }
+  ul { margin: 8px 0; padding-left: 20px; }
+  li { margin: 4px 0; }
+  .callout {
+    border-radius: 10px;
+    padding: 14px 16px;
+    margin: 14px 0;
+    font-size: 14px;
+  }
+  .callout.indigo { background: var(--indigo-soft); border: 1px solid #C7D2FE; }
+  .callout.amber { background: #FFFBEB; border: 1px solid #FDE68A; color: #78350F; }
+  .pill { font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 999px; }
+  .pill.get { background: #DCFCE7; color: var(--green); }
+  .pill.post { background: var(--indigo-soft); color: var(--indigo-dark); }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; margin-top: 8px; }
+  th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { color: var(--muted); font-weight: 600; }
+  .check { color: var(--green); font-weight: 700; }
+  footer { text-align: center; color: var(--muted); font-size: 13px; padding: 24px; }
+</style>
+</head>
+<body>
+<header>
+  <span class="tag">Sub-phase D · Backend</span>
+  <h1>Candidate Auth + Email Verification + Reconciliation</h1>
+  <p>A second, separate JWT auth flow for job applicants — signup, email verification, signin — with implicit linking of anonymous applications via the defense-2 model.</p>
+</header>
+
+<main>
+
+<section>
+  <h2>Why this change</h2>
+  <p>HireFlow already has recruiter auth (JWT, <code>users</code> table). Candidates currently apply anonymously — a <code>candidates</code> row is upserted by email in <code>public.service.ts</code>. This phase gives candidates real accounts so they can sign in and track applications across companies, while keeping security tight:</p>
+  <ul>
+    <li><strong>Defense-2 reconciliation</strong> — anonymous applications link to an account only <em>after</em> email verification, never at signup. The candidate row <em>is</em> the anonymous row, so linking is implicit.</li>
+    <li><strong>Type-based authz</strong> — one JWT system, two user types. The token carries <code>userType</code>; specialized guards stop a candidate token from reaching recruiter endpoints (and vice-versa).</li>
+    <li><strong>Verification gate</strong> — JWT issued only after verifying email; signin blocked until verified.</li>
+  </ul>
+</section>
+
+<section>
+  <h2>Build steps</h2>
+
+  <div class="step">
+    <h3><span class="num">1</span> Prisma migration — Candidate auth fields</h3>
+    <p>Add to the existing <code>Candidate</code> model. All nullable, because a row may exist purely as an anonymous applicant.</p>
+    <pre><code>passwordHash                    String?    // null = anonymous applicant
+emailVerifiedAt                 DateTime?  // null until verified
+emailVerificationToken          String? @unique
+emailVerificationTokenExpiresAt DateTime?
+lastLoginAt                     DateTime?
+// authUserId String? @unique — already present, reserved for future</code></pre>
+    <table>
+      <tr><th>Column</th><th>Why nullable</th></tr>
+      <tr><td><code>passwordHash</code></td><td>Anonymous applicants have no password. Set on signup.</td></tr>
+      <tr><td><code>emailVerifiedAt</code></td><td>Null until the verification link is clicked — the gate for signin + reconciliation.</td></tr>
+      <tr><td><code>emailVerificationToken</code></td><td>Only set between signup and verification; cleared after. Unique = single-use lookup key.</td></tr>
+      <tr><td><code>emailVerificationTokenExpiresAt</code></td><td>24h window; null when no pending verification.</td></tr>
+      <tr><td><code>lastLoginAt</code></td><td>Null until first successful auth.</td></tr>
+    </table>
+    <div class="callout amber"><strong>Destructive:</strong> <code>npx prisma migrate dev --name add-candidate-auth-fields</code> — confirm before running.</div>
+  </div>
+
+  <div class="step">
+    <h3><span class="num">2</span> JWT payload → discriminated union</h3>
+    <p>Replace the flat <code>JwtPayload</code> with a union keyed on <code>userType</code>. Recruiter tokens add <code>companyId</code> + <code>role</code>; candidate tokens carry only <code>sub</code>, <code>email</code>, <code>userType</code>. Recruiter <code>generateToken()</code> stamps <code>userType: 'recruiter'</code>. Legacy tokens (no <code>userType</code>) are treated as recruiter for backward compatibility.</p>
+  </div>
+
+  <div class="step">
+    <h3><span class="num">3</span> MailService — Resend + console fallback</h3>
+    <p>New global <code>MailModule</code>. If <code>RESEND_API_KEY</code> is set, send via Resend; otherwise log a clearly-framed block (URL visible) to the backend logs. <code>sendVerificationEmail()</code> <strong>catches and logs errors, never throws</strong> — a mail failure must not block signup. The template ships both HTML (indigo CTA, 24h expiry note, plain-link fallback) and plain text.</p>
+  </div>
+
+  <div class="step">
+    <h3><span class="num">4</span> Split guards + branch the strategy</h3>
+    <p>The strategy fetches the right table by <code>userType</code> (candidates must have <code>emailVerifiedAt</code> set or it's a 401). Two guards extend the base:</p>
+    <ul>
+      <li><code>RecruiterAuthGuard</code> → requires <code>userType === 'recruiter'</code>, else <code>401 "Recruiter access required"</code></li>
+      <li><code>CandidateAuthGuard</code> → requires <code>userType === 'candidate'</code>, else <code>401 "Candidate access required"</code></li>
+    </ul>
+    <div class="callout indigo"><strong>Critical swap:</strong> every existing protected endpoint (<code>jobs</code>, <code>applications</code>, <code>/auth/me</code>) moves from <code>JwtAuthGuard</code> → <code>RecruiterAuthGuard</code> so candidate tokens can't reach them.</div>
+  </div>
+
+  <div class="step">
+    <h3><span class="num">5</span> Candidate auth module</h3>
+    <table>
+      <tr><th>Endpoint</th><th>Behaviour</th></tr>
+      <tr><td><span class="pill post">POST</span> <code>/auth/candidate/signup</code></td><td>Upsert by email; set passwordHash + token (never <code>emailVerifiedAt</code>). Send email. <strong>201, no JWT.</strong> Throttle 5/min.</td></tr>
+      <tr><td><span class="pill get">GET</span> <code>/auth/candidate/verify?token=</code></td><td>Set <code>emailVerifiedAt</code>, clear token (in a transaction). Issue candidate JWT. Reconciliation is implicit here.</td></tr>
+      <tr><td><span class="pill post">POST</span> <code>/auth/candidate/signin</code></td><td>401 invalid creds · 403 if unverified · else JWT. Throttle 5/min.</td></tr>
+    </table>
+    <p>Token = <code>crypto.randomBytes(32).toString('hex')</code> — a cryptographically random opaque string, <em>not</em> a JWT: single-use, server-revocable (we delete it), and leaks no payload.</p>
+  </div>
+
+  <div class="step">
+    <h3><span class="num">6</span> Candidate dashboard endpoint</h3>
+    <p><span class="pill get">GET</span> <code>/candidate/me/applications</code> — guarded by <code>CandidateAuthGuard</code>. Returns all applications for the candidate (newest first) with nested job + company. Applications to soft-deleted jobs are <strong>shown with a <code>jobAvailable: false</code> flag</strong> rather than hidden, so the candidate keeps a record of every application they submitted.</p>
+  </div>
+</section>
+
+<section>
+  <h2>Reconciliation flow (defense-2)</h2>
+  <pre><code>anonymous apply  →  candidate row {passwordHash:null, emailVerifiedAt:null}  + application
+candidate signup →  SAME row gains passwordHash + token   (emailVerifiedAt STILL null)
+verify email     →  emailVerifiedAt set, token cleared     →  application now visible
+                    (no extra linking — apps always pointed at this row)</code></pre>
+</section>
+
+<section>
+  <h2>Verification checklist</h2>
+  <ul>
+    <li><span class="check">✓</span> Signup → 201, no JWT; DB token set, <code>emailVerifiedAt</code> null; email delivered/logged</li>
+    <li><span class="check">✓</span> Signin pre-verify → 403</li>
+    <li><span class="check">✓</span> Verify → 200 + JWT; <code>emailVerifiedAt</code> set, token null</li>
+    <li><span class="check">✓</span> Signin post-verify → 200; JWT has <code>userType:'candidate'</code>, no <code>companyId</code></li>
+    <li><span class="check">✓</span> Reconciliation: anonymous app appears after verify + signin</li>
+    <li><span class="check">✓</span> Cross-type: candidate→<code>/jobs</code> 401, recruiter→<code>/candidate/me/applications</code> 401</li>
+    <li><span class="check">✓</span> Bad/expired token → 400 · duplicate verified signup → 409 · 6th signup → 429</li>
+  </ul>
+</section>
+
+<section>
+  <h2 style="border-left-color:var(--green);">✅ Build complete — what shipped</h2>
+  <div class="callout indigo">
+    All 6 steps implemented, <code>tsc --noEmit</code> + <code>nest build</code> clean, and the full 10-point verification suite passed against a live server (port 3200, mail in console-fallback mode).
+  </div>
+
+  <h3>New files</h3>
+  <table>
+    <tr><th>Path</th><th>Purpose</th></tr>
+    <tr><td><code>src/mail/mail.module.ts</code></td><td><code>@Global()</code> — exposes MailService everywhere</td></tr>
+    <tr><td><code>src/mail/mail.service.ts</code></td><td>Resend client or console-fallback; never throws on send failure</td></tr>
+    <tr><td><code>src/mail/templates/verification-email.template.ts</code></td><td><code>{html,text}</code>, indigo CTA, HTML-escaped name</td></tr>
+    <tr><td><code>src/auth/types/jwt-payload.type.ts</code></td><td>Discriminated <code>JwtPayload</code> union (recruiter | candidate)</td></tr>
+    <tr><td><code>src/auth/types/safe-candidate.type.ts</code> · <code>auth-user.type.ts</code></td><td>Sensitive-field-stripped candidate + <code>AuthUser</code> union</td></tr>
+    <tr><td><code>src/auth/guards/recruiter-auth.guard.ts</code> · <code>candidate-auth.guard.ts</code></td><td>Per-type guards (401 on wrong type)</td></tr>
+    <tr><td><code>src/auth/candidate/candidate-auth.{controller,service}.ts</code> + 2 DTOs</td><td>signup / verify / signin, throttled 5/min</td></tr>
+    <tr><td><code>src/candidate/candidate.{module,controller,service}.ts</code></td><td><code>GET /candidate/me/applications</code></td></tr>
+  </table>
+
+  <h3>Modified files</h3>
+  <ul>
+    <li><code>prisma/schema.prisma</code> + migration <code>add-candidate-auth-fields</code> — 5 nullable auth columns on Candidate</li>
+    <li><code>auth.service.ts</code> — recruiter token now stamps <code>userType:'recruiter'</code></li>
+    <li><code>jwt.strategy.ts</code> — branches on <code>userType</code>; candidate path requires <code>emailVerifiedAt</code></li>
+    <li><code>current-user.decorator.ts</code> — returns <code>AuthUser</code></li>
+    <li><strong>Guard swap</strong> <code>JwtAuthGuard → RecruiterAuthGuard</code> on <code>jobs.controller</code>, <code>applications.controller</code>, <code>auth.controller</code> (/auth/me)</li>
+    <li><code>auth.module.ts</code> · <code>app.module.ts</code> — wired MailModule, CandidateModule, candidate auth, new guards</li>
+    <li><code>.env</code> / <code>.env.example</code> — added <code>RESEND_API_KEY</code>, <code>EMAIL_FROM</code>, <code>EMAIL_FROM_NAME</code>, <code>APP_URL</code>; installed <code>resend ^6.12.4</code></li>
+  </ul>
+
+  <h3>Verification results (all green)</h3>
+  <table>
+    <tr><th>#</th><th>Test</th><th>Result</th></tr>
+    <tr><td>1</td><td>Signup happy path</td><td><span class="check">201, no JWT; token set, emailVerifiedAt null</span></td></tr>
+    <tr><td>2</td><td>Signin before verify</td><td><span class="check">403 "Please verify your email…"</span></td></tr>
+    <tr><td>3</td><td>Verify email</td><td><span class="check">200 + JWT; verifiedAt set, token null</span></td></tr>
+    <tr><td>4</td><td>Signin after verify + JWT decode</td><td><span class="check">200; userType:candidate, no companyId</span></td></tr>
+    <tr><td>5</td><td>Candidate dashboard</td><td><span class="check">200, [] then 1 app</span></td></tr>
+    <tr><td>6</td><td><strong>Reconciliation (defense-2)</strong></td><td><span class="check">same row claimed only after verify; app appears</span></td></tr>
+    <tr><td>7</td><td>Cross-type guards</td><td><span class="check">candidate→/jobs 401, recruiter→/candidate 401</span></td></tr>
+    <tr><td>8</td><td>Bad + expired token</td><td><span class="check">both 400, identical message</span></td></tr>
+    <tr><td>—</td><td>Deleted-job flag</td><td><span class="check">jobAvailable:false after soft-delete</span></td></tr>
+    <tr><td>9</td><td>Duplicate verified signup</td><td><span class="check">409 "Account already exists"</span></td></tr>
+    <tr><td>10</td><td>Rate limit</td><td><span class="check">429 once 5/60s bucket exhausted</span></td></tr>
+  </table>
+
+  <div class="callout amber">
+    <strong>Note for live email:</strong> <code>RESEND_API_KEY</code> is currently empty → console-fallback mode (verify URL printed to backend logs). Paste a real key into <code>apps/backend/.env</code> to send real emails. The verification link targets the frontend route <code>/verify-candidate</code> (not built this phase) — for API testing, curl <code>GET /auth/candidate/verify?token=…</code> directly.
+  </div>
+</section>
+</main>
+<footer>HireFlow · Sub-phase D · built &amp; verified 2026-06-16</footer>
+</body>
+</html>

@@ -9,7 +9,7 @@ import { AuthService } from './auth.service';
 import { CurrentUser } from './decorators/current-user.decorator';
 import { SigninDto } from './dto/signin.dto';
 import { SignupCompanyDto } from './dto/signup-company.dto';
-import { JwtAuthGuard } from './guards/jwt-auth.guard';
+import { RecruiterAuthGuard } from './guards/recruiter-auth.guard';
 import type { SafeUser } from './types/safe-user.type';
 
 @ApiTags('auth')
@@ -35,7 +35,7 @@ export class AuthController {
   }
 
   @Get('me')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(RecruiterAuthGuard)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Get the current authenticated user' })
   @ApiResponse({ status: 200, description: 'Current user' })
