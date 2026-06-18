@@ -1,8 +1,3 @@
-<script setup lang="ts">
-import { useRouter } from 'vue-router'
-const router = useRouter()
-</script>
-
 <template>
   <div class="not-found">
     <div class="logo">
@@ -15,6 +10,11 @@ const router = useRouter()
     <button class="btn-home" @click="router.push('/dashboard')">Go to dashboard</button>
   </div>
 </template>
+
+<script setup lang="ts">
+import { useRouter } from 'vue-router'
+const router = useRouter()
+</script>
 
 <style scoped>
 .not-found {

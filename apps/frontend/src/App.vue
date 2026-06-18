@@ -1,3 +1,9 @@
+<template>
+  <v-app>
+    <RouterView />
+  </v-app>
+</template>
+
 <script setup lang="ts">
 import { useAuthStore } from '@/stores/auth.store'
 
@@ -6,9 +12,3 @@ const authStore = useAuthStore()
 // any navigation resolves, so no protected page renders before it completes.
 authStore.hydrate()
 </script>
-
-<template>
-  <v-app>
-    <RouterView />
-  </v-app>
-</template>

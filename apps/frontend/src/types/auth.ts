@@ -43,3 +43,37 @@ export interface ApiErrorResponse {
   message: string | string[]
   error: string
 }
+
+// ── Candidate (job-seeker) auth ────────────────────────────────────────────────
+export interface Candidate {
+  id: string
+  email: string
+  fullName: string
+  phone: string | null
+  linkedinUrl: string | null
+  emailVerifiedAt: string | null
+}
+
+export interface CandidateSignupRequest {
+  fullName: string
+  email: string
+  password: string
+  linkedinUrl?: string
+}
+
+export interface CandidateSigninRequest {
+  email: string
+  password: string
+}
+
+/** POST /auth/candidate/signup — no token; email must be verified first. */
+export interface CandidateSignupResponse {
+  message: string
+  email: string
+}
+
+/** POST /auth/candidate/signin & GET /auth/candidate/verify */
+export interface CandidateAuthResponse {
+  user: Candidate
+  accessToken: string
+}

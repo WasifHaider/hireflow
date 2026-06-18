@@ -21,10 +21,47 @@ const router = createRouter({
       meta: { redirectIfAuthed: true },
     },
     {
-      path: '/dashboard',
-      name: 'dashboard',
-      component: () => import('@/views/Dashboard.vue'),
+      path: '/welcome',
+      name: 'welcome',
+      component: () => import('@/views/Welcome.vue'),
       meta: { requiresAuth: true },
+    },
+    // ── Recruiter app shell (pathless parent renders chrome once; children
+    //    render through its <RouterView/>, so it never remounts on nav) ────────
+    {
+      path: '',
+      component: () => import('@/layouts/RecruiterLayout.vue'),
+      meta: { requiresAuth: true },
+      children: [
+        {
+          path: '/dashboard',
+          name: 'dashboard',
+          component: () => import('@/views/Dashboard.vue'),
+        },
+      ],
+    },
+    // ── Candidate (job-seeker) auth ──────────────────────────────────────────
+    {
+      path: '/candidate/signup',
+      name: 'candidate-signup',
+      component: () => import('@/views/CandidateSignUp.vue'),
+    },
+    {
+      path: '/candidate/signin',
+      name: 'candidate-signin',
+      component: () => import('@/views/CandidateSignIn.vue'),
+    },
+    // ── Candidate app shell ──────────────────────────────────────────────────
+    {
+      path: '',
+      component: () => import('@/layouts/CandidateLayout.vue'),
+      children: [
+        {
+          path: '/candidate/dashboard',
+          name: 'candidate-dashboard',
+          component: () => import('@/views/CandidateDashboard.vue'),
+        },
+      ],
     },
     {
       path: '/auth/callback',

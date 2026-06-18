@@ -1,13 +1,3 @@
-<script setup lang="ts">
-import { useAuthStore } from '@/stores/auth.store'
-
-const authStore = useAuthStore()
-
-async function handleSignOut() {
-  await authStore.signout()
-}
-</script>
-
 <template>
   <v-app-bar flat border="b" color="white" height="56">
     <div class="nav-inner">
@@ -45,6 +35,16 @@ async function handleSignOut() {
     <slot />
   </v-main>
 </template>
+
+<script setup lang="ts">
+import { useAuthStore } from '@/stores/auth.store'
+
+const authStore = useAuthStore()
+
+async function handleSignOut() {
+  await authStore.signout()
+}
+</script>
 
 <style scoped>
 .nav-inner {
