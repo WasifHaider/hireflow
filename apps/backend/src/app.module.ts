@@ -8,6 +8,7 @@ import { AppService } from './app.service';
 import { AuthModule } from './auth/auth.module';
 import { ApplicationsModule } from './applications/applications.module';
 import { CandidateModule } from './candidate/candidate.module';
+import { DashboardModule } from './dashboard/dashboard.module';
 import { JobsModule } from './jobs/jobs.module';
 import { MailModule } from './mail/mail.module';
 import { PrismaModule } from './prisma/prisma.module';
@@ -53,6 +54,7 @@ import { StorageModule } from './storage/storage.module';
     AuthModule,
     ApplicationsModule,
     CandidateModule,
+    DashboardModule,
     JobsModule,
     PublicModule,
   ],
