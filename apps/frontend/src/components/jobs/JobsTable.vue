@@ -30,6 +30,11 @@
         <JobStatusPill :status="(item as JobListItem).status" />
       </template>
 
+      <!-- Applicants — tabular figures -->
+      <template #item.applicationCount="{ item }">
+        <span class="num">{{ (item as JobListItem).applicationCount }}</span>
+      </template>
+
       <!-- Opened date (publishedAt ?? createdAt) -->
       <template #item.publishedAt="{ item }">
         <span class="hf-cand-sub">{{ opened(item as JobListItem) }}</span>
@@ -93,10 +98,14 @@ const columns: Column[] = [
   { key: 'actions', title: '', width: 56, align: 'end' },
 ]
 
-// Map our backend sort state into Vuetify's controlled sort-by array.
-const vSortBy = computed(() => [{ key: props.sortBy, order: props.sortOrder }])
-
 const SORTABLE_KEYS: ServerSortBy[] = ['title', 'publishedAt']
+
+// Map our backend sort state into Vuetify's controlled sort-by array. Only emit a
+// sort indicator for keys that are actual sortable columns; the default `createdAt`
+// has no column, so represent it as "no active sort" ([]) rather than a phantom key.
+const vSortBy = computed(() =>
+  SORTABLE_KEYS.includes(props.sortBy) ? [{ key: props.sortBy, order: props.sortOrder }] : [],
+)
 
 function onOptions(o: DataTableOptions): void {
   const head = o.sortBy[0]
@@ -169,6 +178,9 @@ function actionsFor(job: JobListItem): Action[] {
 .hf-cand-sub {
   font-size: 11.5px;
   color: var(--hf-text-subtle);
+}
+.num {
+  font-variant-numeric: tabular-nums;
 }
 .hf-icon-btn {
   width: 30px;
