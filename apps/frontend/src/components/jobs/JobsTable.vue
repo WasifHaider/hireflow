@@ -1,7 +1,7 @@
 <template>
   <div class="hf-card table-card">
     <AppDataTable
-      :columns="columns"
+      :columns="visibleColumns"
       :rows="jobs"
       :loading="loading"
       :server-items-length="total"
@@ -38,6 +38,24 @@
       <!-- Opened date (publishedAt ?? createdAt) -->
       <template #item.publishedAt="{ item }">
         <span class="hf-cand-sub">{{ opened(item as JobListItem) }}</span>
+      </template>
+
+      <!-- Owner: avatar (gradient initials or img) + first name -->
+      <template #item.owner="{ item }">
+        <div class="owner-cell">
+          <img
+            v-if="(item as JobListItem).owner.avatarUrl"
+            :src="(item as JobListItem).owner.avatarUrl!"
+            class="owner-avatar"
+            :alt="(item as JobListItem).owner.fullName"
+          />
+          <span
+            v-else
+            class="owner-avatar"
+            :style="avatarStyle((item as JobListItem).owner.fullName)"
+          >{{ ownerInitials((item as JobListItem).owner.fullName) }}</span>
+          <span class="owner-name">{{ (item as JobListItem).owner.fullName.split(' ')[0] }}</span>
+        </div>
       </template>
 
       <!-- Actions menu — status-dependent -->
@@ -82,6 +100,7 @@ const props = defineProps<{
   pageSize: number
   sortBy: ServerSortBy
   sortOrder: 'asc' | 'desc'
+  hiddenCols: string[]
 }>()
 
 const emit = defineEmits<{
@@ -95,8 +114,11 @@ const columns: Column[] = [
   { key: 'status', title: 'Status' },
   { key: 'applicationCount', title: 'Applicants' },
   { key: 'publishedAt', title: 'Opened', sortable: true },
+  { key: 'owner', title: 'Owner' },
   { key: 'actions', title: '', width: 56, align: 'end' },
 ]
+
+const visibleColumns = computed(() => columns.filter((c) => !props.hiddenCols.includes(c.key)))
 
 const SORTABLE_KEYS: ServerSortBy[] = ['title', 'publishedAt']
 
@@ -125,6 +147,10 @@ function avatarStyle(title: string) {
   const c1 = `hsl(${h}, 55%, 55%)`
   const c2 = `hsl(${(h + 40) % 360}, 55%, 48%)`
   return { background: `linear-gradient(135deg, ${c1}, ${c2})` }
+}
+
+function ownerInitials(name: string): string {
+  return name.split(' ').map((p) => p[0]).slice(0, 2).join('').toUpperCase()
 }
 
 function subtitle(job: JobListItem): string {
@@ -199,5 +225,25 @@ function actionsFor(job: JobListItem): Action[] {
 }
 .danger {
   color: var(--hf-danger);
+}
+.owner-cell {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.owner-avatar {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  color: white;
+  font-weight: 600;
+  font-size: 10px;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  object-fit: cover;
+}
+.owner-name {
+  font-size: 12.5px;
 }
 </style>

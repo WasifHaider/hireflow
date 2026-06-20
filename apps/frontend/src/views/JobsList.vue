@@ -24,6 +24,7 @@
       :page-size="pageSize"
       :sort-by="sortBy"
       :sort-order="sortOrder"
+      :hidden-cols="hiddenCols"
       @update:options="onOptions"
       @row-click="(j) => router.push(`/jobs/${j.id}/edit`)"
       @action="onAction"
