@@ -9,7 +9,9 @@
       </div>
       <div class="head-actions">
         <button class="hf-btn ghost"><HfIcon name="download" :size="14" />Export</button>
-        <button class="hf-btn primary"><HfIcon name="plus" :size="14" />New job</button>
+        <button class="hf-btn primary" @click="router.push('/jobs/new')">
+          <HfIcon name="plus" :size="14" />New job
+        </button>
       </div>
     </div>
 
@@ -100,6 +102,7 @@
 
 <script setup lang="ts">
 import { computed, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import HfIcon from '@/components/common/HfIcon.vue'
 import AppDataTable, { type Column } from '@/components/common/AppDataTable.vue'
 import ApplicationsLineChart from '@/components/common/ApplicationsLineChart.vue'
@@ -111,6 +114,7 @@ import type { ApplicationStage } from '@/types/dashboard'
    come from the auth store (GET /auth/me, hydrated on mount/refresh). */
 const authStore = useAuthStore()
 const dashboard = useDashboardStore()
+const router = useRouter()
 
 const firstName = computed(() => (authStore.userFullName || 'there').split(' ')[0])
 
