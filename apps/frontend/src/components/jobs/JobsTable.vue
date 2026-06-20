@@ -1,6 +1,5 @@
 <template>
-  <div class="hf-card table-card">
-    <AppDataTable
+  <AppDataTable
       :columns="visibleColumns"
       :rows="jobs"
       :loading="loading"
@@ -80,7 +79,6 @@
 
       <template #empty>No jobs match your filters.</template>
     </AppDataTable>
-  </div>
 </template>
 
 <script setup lang="ts">
@@ -176,10 +174,6 @@ function actionsFor(job: JobListItem): Action[] {
 </script>
 
 <style scoped>
-.table-card {
-  padding: 0;
-  overflow: hidden;
-}
 .job-cell {
   display: flex;
   align-items: center;

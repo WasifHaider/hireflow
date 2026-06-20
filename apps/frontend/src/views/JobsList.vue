@@ -4,31 +4,40 @@
       :search="search"
       :status="statusFilter"
       :counts="response.counts"
-      :facets="facets"
+      :facets="store.facets"
       :filters="filters"
       :owner-id="ownerId"
       :hidden-cols="hiddenCols"
       @update:search="onSearch"
       @update:status="onStatus"
-      @update:filters="filters = $event"
-      @update:owner-id="ownerId = $event"
+      @update:filters="onFilters"
+      @update:owner-id="onOwner"
       @update:hidden-cols="hiddenCols = $event"
       @new="router.push('/jobs/new')"
     />
 
-    <JobsTable
-      :jobs="response.data"
-      :loading="store.loading"
-      :total="response.total"
-      :page="page"
-      :page-size="pageSize"
-      :sort-by="sortBy"
-      :sort-order="sortOrder"
-      :hidden-cols="hiddenCols"
-      @update:options="onOptions"
-      @row-click="(j) => router.push(`/jobs/${j.id}/edit`)"
-      @action="onAction"
-    />
+    <div class="hf-card table-wrap">
+      <JobsTable
+        :jobs="response.data"
+        :loading="store.loading"
+        :total="response.total"
+        :page="page"
+        :page-size="pageSize"
+        :sort-by="sortBy"
+        :sort-order="sortOrder"
+        :hidden-cols="hiddenCols"
+        @update:options="onOptions"
+        @row-click="(j) => router.push(`/jobs/${j.id}/edit`)"
+        @action="onAction"
+      />
+      <AppPagination
+        :total="response.total"
+        :page="page"
+        :page-size="pageSize"
+        @update:page="onPage"
+        @update:page-size="onPageSize"
+      />
+    </div>
 
     <!-- delete confirm -->
     <v-dialog v-model="confirmOpen" max-width="420">
@@ -49,14 +58,15 @@
 </template>
 
 <script setup lang="ts">
-import { reactive, ref } from 'vue'
+import { reactive, ref, watch, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useJobsStore } from '@/stores/jobs.store'
-import type { JobFacets, JobListItem, JobListResponse, JobStatus } from '@/types/job'
+import type { JobListItem, JobListResponse, JobStatus } from '@/types/job'
 import type { JobFilters } from '@/components/jobs/JobsFiltersMenu.vue'
 import JobsToolbar from '@/components/jobs/JobsToolbar.vue'
 import JobsTable from '@/components/jobs/JobsTable.vue'
 import AppButton from '@/components/common/AppButton.vue'
+import AppPagination from '@/components/common/AppPagination.vue'
 
 type StatusFilter = JobStatus | 'ALL'
 type SortBy = 'createdAt' | 'title' | 'publishedAt'
@@ -71,13 +81,21 @@ const statusFilter = ref<StatusFilter>('ALL')
 const sortBy = ref<SortBy>('createdAt')
 const sortOrder = ref<'asc' | 'desc'>('desc')
 
-// Toolbar filter state — wired to real backend in Task 10.
+// Real filter state — persisted locally for hiddenCols
 const filters = ref<JobFilters>({})
 const ownerId = ref<string | undefined>(undefined)
-const hiddenCols = ref<string[]>([])
-const facets = ref<JobFacets>({ departments: [], locations: [], owners: [] })
+const hiddenCols = ref<string[]>(JSON.parse(localStorage.getItem('hf.jobs.hiddenCols') ?? '[]'))
 
-const response = ref<JobListResponse>({ data: [], total: 0, page: 1, pageSize: pageSize.value, totalPages: 0, counts: { all: 0, DRAFT: 0, PUBLISHED: 0, CLOSED: 0 } })
+watch(hiddenCols, (v) => localStorage.setItem('hf.jobs.hiddenCols', JSON.stringify(v)), { deep: true })
+
+const response = ref<JobListResponse>({
+  data: [],
+  total: 0,
+  page: 1,
+  pageSize: pageSize.value,
+  totalPages: 0,
+  counts: { all: 0, DRAFT: 0, PUBLISHED: 0, CLOSED: 0 },
+})
 
 const confirmOpen = ref(false)
 const pendingDelete = ref<JobListItem | null>(null)
@@ -97,6 +115,8 @@ async function load() {
       search: search.value.trim() || undefined,
       sortBy: sortBy.value,
       sortOrder: sortOrder.value,
+      ...filters.value,
+      ownerId: ownerId.value,
     })
   } catch {
     notify(store.error ?? 'Failed to load jobs.')
@@ -116,6 +136,29 @@ function onSearch(value: string) {
 
 function onStatus(value: StatusFilter) {
   statusFilter.value = value
+  page.value = 1
+  load()
+}
+
+function onFilters(v: JobFilters) {
+  filters.value = v
+  page.value = 1
+  load()
+}
+
+function onOwner(v: string | undefined) {
+  ownerId.value = v
+  page.value = 1
+  load()
+}
+
+function onPage(p: number) {
+  page.value = p
+  load()
+}
+
+function onPageSize(s: number) {
+  pageSize.value = s
   page.value = 1
   load()
 }
@@ -171,7 +214,12 @@ async function doDelete() {
   }
 }
 
-load()
+onMounted(() => {
+  load()
+  store.fetchFacets().catch(() => {
+    // Facets are non-critical; leave them empty on failure rather than breaking mount.
+  })
+})
 </script>
 
 <style scoped>
@@ -179,6 +227,10 @@ load()
   display: flex;
   flex-direction: column;
   gap: 20px;
+}
+.table-wrap {
+  padding: 0;
+  overflow: hidden;
 }
 .confirm-card {
   padding: 22px;
