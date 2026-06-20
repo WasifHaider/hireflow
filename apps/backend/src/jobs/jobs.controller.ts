@@ -47,7 +47,7 @@ export class JobsController {
 
   @Get()
   @ApiOperation({ summary: 'List jobs for the current company (paginated)' })
-  @ApiResponse({ status: 200, description: 'Paginated job list' })
+  @ApiResponse({ status: 200, description: 'Paginated job list; each item includes applicationCount' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   findAll(@CurrentUser() user: SafeUser, @Query() query: ListJobsQueryDto) {
     return this.jobsService.findAll(query, user.companyId);

@@ -21,12 +21,18 @@ export class JobsService {
         title: dto.title,
         description: dto.description,
         requirements: dto.requirements,
+        department: dto.department,
         location: dto.location,
         jobType: dto.jobType,
         employmentType: dto.employmentType,
         salaryMin: dto.salaryMin,
         salaryMax: dto.salaryMax,
         salaryCurrency: dto.salaryCurrency ?? 'USD',
+        mustHaveSkills: dto.mustHaveSkills ?? [],
+        niceToHaveSkills: dto.niceToHaveSkills ?? [],
+        minExperienceYears: dto.minExperienceYears,
+        education: dto.education,
+        autoRejectScore: dto.autoRejectScore,
         status,
         publishedAt: status === JobStatus.PUBLISHED ? new Date() : undefined,
       },
@@ -55,15 +61,21 @@ export class JobsService {
       [query.sortBy]: query.sortOrder,
     };
 
-    const [data, total] = await this.prisma.$transaction([
+    const [rows, total] = await this.prisma.$transaction([
       this.prisma.job.findMany({
         where,
         orderBy,
         skip,
         take: query.pageSize,
+        include: { _count: { select: { applications: true } } },
       }),
       this.prisma.job.count({ where }),
     ]);
+
+    const data = rows.map(({ _count, ...job }) => ({
+      ...job,
+      applicationCount: _count.applications,
+    }));
 
     return {
       data,
