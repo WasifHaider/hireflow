@@ -114,8 +114,9 @@ function initial(title: string): string {
 function avatarStyle(title: string) {
   let h = 0
   for (let i = 0; i < title.length; i++) h = (h * 31 + title.charCodeAt(i)) % 360
-  const c = `hsl(${h}, 55%, 55%)`
-  return { background: `linear-gradient(135deg, ${c}, ${c})` }
+  const c1 = `hsl(${h}, 55%, 55%)`
+  const c2 = `hsl(${(h + 40) % 360}, 55%, 48%)`
+  return { background: `linear-gradient(135deg, ${c1}, ${c2})` }
 }
 
 function subtitle(job: JobListItem): string {

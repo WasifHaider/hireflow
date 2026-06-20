@@ -150,6 +150,8 @@ async function doDelete() {
     load()
   } catch {
     notify(store.error ?? 'Failed to delete job.')
+  } finally {
+    pendingDelete.value = null
   }
 }
 
