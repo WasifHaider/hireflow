@@ -1,5 +1,5 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { JobStatus } from '@prisma/client';
+import { EmploymentType, JobStatus, JobType } from '@prisma/client';
 import { Transform } from 'class-transformer';
 import {
   IsEnum,
@@ -7,6 +7,7 @@ import {
   IsInt,
   IsOptional,
   IsString,
+  IsUUID,
   Max,
   Min,
 } from 'class-validator';
@@ -66,4 +67,29 @@ export class ListJobsQueryDto {
   @IsOptional()
   @IsIn([...SORT_ORDERS])
   sortOrder: JobSortOrder = 'desc';
+
+  @ApiPropertyOptional({ description: 'Exact department match' })
+  @IsOptional()
+  @IsString()
+  department?: string;
+
+  @ApiPropertyOptional({ description: 'Exact location match' })
+  @IsOptional()
+  @IsString()
+  location?: string;
+
+  @ApiPropertyOptional({ enum: JobType, description: 'Work mode' })
+  @IsOptional()
+  @IsEnum(JobType)
+  jobType?: JobType;
+
+  @ApiPropertyOptional({ enum: EmploymentType, description: 'Employment / job type' })
+  @IsOptional()
+  @IsEnum(EmploymentType)
+  employmentType?: EmploymentType;
+
+  @ApiPropertyOptional({ description: 'Filter by job creator (owner) user id' })
+  @IsOptional()
+  @IsUUID()
+  ownerId?: string;
 }

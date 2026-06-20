@@ -38,6 +38,22 @@ const router = createRouter({
           name: 'dashboard',
           component: () => import('@/views/Dashboard.vue'),
         },
+        {
+          path: '/jobs',
+          name: 'jobs',
+          component: () => import('@/views/JobsList.vue'),
+        },
+        {
+          path: '/jobs/new',
+          name: 'job-new',
+          component: () => import('@/views/JobForm.vue'),
+        },
+        {
+          path: '/jobs/:id/edit',
+          name: 'job-edit',
+          component: () => import('@/views/JobForm.vue'),
+          props: true,
+        },
       ],
     },
     // ── Candidate (job-seeker) auth ──────────────────────────────────────────

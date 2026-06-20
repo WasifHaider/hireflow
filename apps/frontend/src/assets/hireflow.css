@@ -3,7 +3,8 @@
    components can reuse the hf-* classes verbatim and stay pixel-matched. */
 :root {
   --hf-bg: #F9FAFB;
-  --hf-surface: #FFFFFF;
+  --hf-surface: #ffffff;
+  --hf-surface-dark: #f7f3ff;
   --hf-surface-alt: #FBFBFD;
   --hf-border: #E5E7EB;
   --hf-border-strong: #D1D5DB;
@@ -260,6 +261,7 @@
 .hf-h1 { font-size: 22px; font-weight: 600; letter-spacing: -0.02em; margin: 0; }
 .hf-h2 { font-size: 15px; font-weight: 600; letter-spacing: -0.01em; margin: 0; }
 .hf-muted { color: var(--hf-text-muted); font-size: 13px; }
+.hf-help { font-size: 11.5px; color: var(--hf-text-subtle); }
 
 /* ----- Buttons ----- */
 .hf-btn {

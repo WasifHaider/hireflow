@@ -1,12 +1,15 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { EmploymentType, JobStatus, JobType } from '@prisma/client';
 import {
+  ArrayMaxSize,
+  IsArray,
   IsEnum,
   IsInt,
   IsNotEmpty,
   IsOptional,
   IsString,
   Matches,
+  Max,
   MaxLength,
   Min,
   MinLength,
@@ -58,6 +61,12 @@ export class CreateJobDto {
   @MinLength(10)
   requirements!: string;
 
+  @ApiPropertyOptional({ example: 'Engineering', maxLength: 100 })
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  department?: string;
+
   @ApiProperty({ example: 'San Francisco, CA', minLength: 2, maxLength: 100 })
   @IsString()
   @IsNotEmpty()
@@ -97,6 +106,54 @@ export class CreateJobDto {
     message: 'salaryCurrency must be a 3-letter ISO 4217 code (e.g. USD)',
   })
   salaryCurrency?: string;
+
+  @ApiPropertyOptional({
+    type: [String],
+    example: ['Go', 'gRPC', 'PostgreSQL'],
+    description: 'Heavily weighted in AI scoring',
+  })
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(30)
+  @IsString({ each: true })
+  @MaxLength(60, { each: true })
+  mustHaveSkills?: string[];
+
+  @ApiPropertyOptional({
+    type: [String],
+    example: ['Rust', 'Kafka', 'Terraform'],
+  })
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(30)
+  @IsString({ each: true })
+  @MaxLength(60, { each: true })
+  niceToHaveSkills?: string[];
+
+  @ApiPropertyOptional({ example: 6, minimum: 0, maximum: 50 })
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  @Max(50)
+  minExperienceYears?: number;
+
+  @ApiPropertyOptional({ example: 'BS in CS or related', maxLength: 200 })
+  @IsOptional()
+  @IsString()
+  @MaxLength(200)
+  education?: string;
+
+  @ApiPropertyOptional({
+    example: 55,
+    minimum: 0,
+    maximum: 100,
+    description: 'Candidates scoring below are auto-moved to Rejected',
+  })
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  @Max(100)
+  autoRejectScore?: number;
 
   @ApiPropertyOptional({
     enum: JobStatus,

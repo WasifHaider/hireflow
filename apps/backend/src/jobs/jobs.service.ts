@@ -21,12 +21,18 @@ export class JobsService {
         title: dto.title,
         description: dto.description,
         requirements: dto.requirements,
+        department: dto.department,
         location: dto.location,
         jobType: dto.jobType,
         employmentType: dto.employmentType,
         salaryMin: dto.salaryMin,
         salaryMax: dto.salaryMax,
         salaryCurrency: dto.salaryCurrency ?? 'USD',
+        mustHaveSkills: dto.mustHaveSkills ?? [],
+        niceToHaveSkills: dto.niceToHaveSkills ?? [],
+        minExperienceYears: dto.minExperienceYears,
+        education: dto.education,
+        autoRejectScore: dto.autoRejectScore,
         status,
         publishedAt: status === JobStatus.PUBLISHED ? new Date() : undefined,
       },
@@ -34,40 +40,72 @@ export class JobsService {
   }
 
   async findAll(query: ListJobsQueryDto, companyId: string) {
-    const where: Prisma.JobWhereInput = {
-      companyId,
-      deletedAt: null,
-    };
-
-    if (query.status) {
-      where.status = query.status;
-    }
+    // baseWhere = everything EXCEPT status, so faceted counts are stable across tabs.
+    const baseWhere: Prisma.JobWhereInput = { companyId, deletedAt: null };
 
     if (query.search) {
-      where.OR = [
+      baseWhere.OR = [
         { title: { contains: query.search, mode: 'insensitive' } },
         { location: { contains: query.search, mode: 'insensitive' } },
       ];
     }
+    if (query.department) baseWhere.department = query.department;
+    if (query.location) baseWhere.location = query.location;
+    if (query.jobType) baseWhere.jobType = query.jobType;
+    if (query.employmentType) baseWhere.employmentType = query.employmentType;
+    if (query.ownerId) baseWhere.createdById = query.ownerId;
+
+    const where: Prisma.JobWhereInput = { ...baseWhere };
+    if (query.status) where.status = query.status;
 
     const skip = (query.page - 1) * query.pageSize;
     const orderBy: Prisma.JobOrderByWithRelationInput = {
       [query.sortBy]: query.sortOrder,
     };
 
-    const [data, total] = await this.prisma.$transaction([
+    type GroupedRow = { status: string; _count: { _all: number } };
+    type TxResult = [
+      Array<{ _count: { applications: number }; createdBy: { id: string; fullName: string; avatarUrl: string | null } } & Record<string, unknown>>,
+      number,
+      GroupedRow[],
+    ];
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const [rows, total, grouped] = (await (this.prisma.$transaction as any)([
       this.prisma.job.findMany({
         where,
         orderBy,
         skip,
         take: query.pageSize,
+        include: {
+          _count: { select: { applications: true } },
+          createdBy: { select: { id: true, fullName: true, avatarUrl: true } },
+        },
       }),
       this.prisma.job.count({ where }),
-    ]);
+      this.prisma.job.groupBy({
+        by: ['status'],
+        where: baseWhere,
+        _count: { _all: true },
+      }),
+    ])) as TxResult;
+
+    const counts = { all: 0, DRAFT: 0, PUBLISHED: 0, CLOSED: 0 };
+    for (const g of grouped) {
+      counts[g.status as keyof typeof counts] = g._count._all;
+      counts.all += g._count._all;
+    }
+
+    const data = rows.map(({ _count, createdBy, ...job }) => ({
+      ...job,
+      applicationCount: (_count as { applications: number }).applications,
+      owner: createdBy,
+    }));
 
     return {
       data,
       total,
+      counts,
       page: query.page,
       pageSize: query.pageSize,
       totalPages: total === 0 ? 0 : Math.ceil(total / query.pageSize),
@@ -109,5 +147,24 @@ export class JobsService {
       data: { deletedAt: new Date() },
       select: { id: true, deletedAt: true },
     });
+  }
+
+  async getFacets(companyId: string) {
+    const rows = await this.prisma.job.findMany({
+      where: { companyId, deletedAt: null },
+      select: {
+        department: true,
+        location: true,
+        createdBy: { select: { id: true, fullName: true, avatarUrl: true } },
+      },
+    });
+
+    const departments = [...new Set(rows.map((r) => r.department).filter((d): d is string => !!d))].sort();
+    const locations = [...new Set(rows.map((r) => r.location).filter((l): l is string => !!l))].sort();
+    const ownersMap = new Map<string, { id: string; fullName: string; avatarUrl: string | null }>();
+    for (const r of rows) ownersMap.set(r.createdBy.id, r.createdBy);
+    const owners = [...ownersMap.values()].sort((a, b) => a.fullName.localeCompare(b.fullName));
+
+    return { departments, locations, owners };
   }
 }

@@ -81,16 +81,22 @@ model Job {
   id             String                      @id @default(uuid())
   companyId      String                      @map("company_id")
   createdById    String                      @map("created_by_id")
-  title          String
-  description    String
-  requirements   String
-  location       String
-  jobType        JobType                     @map("job_type")
-  employmentType EmploymentType              @map("employment_type")
-  salaryMin      Int?                        @map("salary_min")
-  salaryMax      Int?                        @map("salary_max")
-  salaryCurrency String                      @default("USD") @map("salary_currency")
-  status         JobStatus                   @default(DRAFT)
+  title            String
+  description      String
+  requirements     String
+  department       String?
+  location         String
+  jobType          JobType                     @map("job_type")
+  employmentType   EmploymentType              @map("employment_type")
+  salaryMin        Int?                        @map("salary_min")
+  salaryMax        Int?                        @map("salary_max")
+  salaryCurrency   String                      @default("USD") @map("salary_currency")
+  mustHaveSkills   String[]                    @default([]) @map("must_have_skills")
+  niceToHaveSkills String[]                    @default([]) @map("nice_to_have_skills")
+  minExperienceYears Int?                      @map("min_experience_years")
+  education        String?
+  autoRejectScore  Int?                        @map("auto_reject_score")
+  status           JobStatus                   @default(DRAFT)
   publishedAt    DateTime?                   @map("published_at")
   deletedAt      DateTime?                   @map("deleted_at")
   jobEmbedding   Unsupported("vector(1536)")? @map("job_embedding")

@@ -2,9 +2,9 @@
   <!-- App bar: brand, workspace, search, actions. Vuetify v-app-bar restyled
        with hf tokens so it matches the mockup but stays a real Vuetify layout. -->
   <v-app-bar class="hf-bar" :height="56" flat border>
-    <v-btn class="hf-icon-btn" variant="text" :ripple="false" @click="rail = !rail">
+    <!-- <v-btn class="hf-icon-btn" variant="text" :ripple="false" @click="rail = !rail">
       <HfIcon name="menu" :size="18" />
-    </v-btn>
+    </v-btn> -->
 
     <AppBarLogo to="/dashboard" />
 
@@ -50,27 +50,11 @@
   >
     <v-list class="hf-nav-list" nav density="comfortable" color="primary">
       <v-list-subheader v-if="!rail">Workspace</v-list-subheader>
-      <v-list-item
-        v-for="it in navItems"
-        :key="it.name"
-        :to="it.to"
-        :title="it.name"
-        rounded="lg"
-      >
+      <v-list-item v-for="it in navItems" :key="it.name" :to="it.to" :title="it.name" rounded="lg">
         <template #prepend><HfIcon :name="it.icon" :size="16" /></template>
         <template v-if="!rail && it.count !== undefined" #append>
           <span class="hf-count">{{ it.count }}</span>
         </template>
-      </v-list-item>
-
-      <v-list-subheader v-if="!rail">Pinned jobs</v-list-subheader>
-      <v-list-item
-        v-for="p in pinned"
-        :key="p.name"
-        :title="p.name"
-        rounded="lg"
-      >
-        <template #prepend><span class="pin-dot" :style="{ background: p.color }" /></template>
       </v-list-item>
     </v-list>
 
@@ -120,17 +104,10 @@ const workspaceInitial = computed(() => (authStore.companyName || 'A').charAt(0)
 
 const navItems: { name: string; icon: string; to?: string; count?: number }[] = [
   { name: 'Dashboard', icon: 'layout', to: '/dashboard' },
-  { name: 'Jobs', icon: 'briefcase', count: 12 },
-  { name: 'Candidates', icon: 'users', count: 284 },
-  { name: 'Pipeline', icon: 'columns' },
-  { name: 'Inbox', icon: 'inbox', count: 8 },
-  { name: 'Analytics', icon: 'chart' },
-]
-
-const pinned = [
-  { name: 'Senior Backend Eng', color: '#a78bfa' },
-  { name: 'Product Designer', color: '#fbbf24' },
-  { name: 'Data Scientist', color: '#34d399' },
+  { name: 'Jobs', icon: 'briefcase', count: 12, to: '/jobs' },
+  { name: 'Candidates', icon: 'users', count: 284, to: '/candidates' },
+  { name: 'Pipeline', icon: 'columns', to: '/pipeline' },
+  { name: 'Analytics', icon: 'chart', to: '/analytics' },
 ]
 </script>
 
@@ -194,6 +171,10 @@ const pinned = [
 /* Sidebar list to hf tokens. */
 .hf-nav-list {
   font-size: 13.5px;
+}
+/* Custom icon in #prepend collapses Vuetify's prepend spacer — re-add gap. */
+.hf-nav-list :deep(.v-list-item__prepend > .v-list-item__spacer) {
+  width: 12px;
 }
 .hf-nav-list :deep(.v-list-subheader) {
   font-size: 11px;

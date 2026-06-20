@@ -47,10 +47,18 @@ export class JobsController {
 
   @Get()
   @ApiOperation({ summary: 'List jobs for the current company (paginated)' })
-  @ApiResponse({ status: 200, description: 'Paginated job list' })
+  @ApiResponse({ status: 200, description: 'Paginated job list; each item includes applicationCount' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   findAll(@CurrentUser() user: SafeUser, @Query() query: ListJobsQueryDto) {
     return this.jobsService.findAll(query, user.companyId);
+  }
+
+  @Get('facets')
+  @ApiOperation({ summary: 'Distinct departments, locations, and owners for filters' })
+  @ApiResponse({ status: 200, description: 'Facet option lists' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  getFacets(@CurrentUser() user: SafeUser) {
+    return this.jobsService.getFacets(user.companyId);
   }
 
   @Get(':id')
