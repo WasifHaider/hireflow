@@ -16,8 +16,7 @@
       :page-size="pageSize"
       :sort-by="sortBy"
       :sort-order="sortOrder"
-      @sort="onSort"
-      @page="onPage"
+      @update:options="onOptions"
       @row-click="(j) => router.push(`/jobs/${j.id}/edit`)"
       @action="onAction"
     />
@@ -55,14 +54,14 @@ type SortBy = 'createdAt' | 'title' | 'publishedAt'
 const router = useRouter()
 const store = useJobsStore()
 
-const pageSize = 10
 const page = ref(1)
+const pageSize = ref(10)
 const search = ref('')
 const statusFilter = ref<StatusFilter>('ALL')
 const sortBy = ref<SortBy>('createdAt')
 const sortOrder = ref<'asc' | 'desc'>('desc')
 
-const response = ref<JobListResponse>({ data: [], total: 0, page: 1, pageSize, totalPages: 0 })
+const response = ref<JobListResponse>({ data: [], total: 0, page: 1, pageSize: pageSize.value, totalPages: 0 })
 
 const confirmOpen = ref(false)
 const pendingDelete = ref<JobListItem | null>(null)
@@ -77,7 +76,7 @@ async function load() {
   try {
     response.value = await store.fetchJobs({
       page: page.value,
-      pageSize,
+      pageSize: pageSize.value,
       status: statusFilter.value === 'ALL' ? undefined : statusFilter.value,
       search: search.value.trim() || undefined,
       sortBy: sortBy.value,
@@ -105,19 +104,20 @@ function onStatus(value: StatusFilter) {
   load()
 }
 
-function onSort(key: 'title' | 'publishedAt') {
-  if (sortBy.value === key) {
-    sortOrder.value = sortOrder.value === 'asc' ? 'desc' : 'asc'
-  } else {
-    sortBy.value = key
-    sortOrder.value = 'asc'
-  }
-  page.value = 1
-  load()
-}
+// Page / sort / rows-per-page changes come from the table (AppDataTable's footer
+// + sortable headers). v-data-table-server also fires this once on mount with the
+// current state — the no-op guard skips that echo so we don't double-fetch.
+function onOptions(o: { page: number; pageSize: number; sortBy: SortBy; sortOrder: 'asc' | 'desc' }) {
+  const sortChanged = o.sortBy !== sortBy.value || o.sortOrder !== sortOrder.value
+  const sizeChanged = o.pageSize !== pageSize.value
+  const pageChanged = o.page !== page.value
+  if (!sortChanged && !sizeChanged && !pageChanged) return
 
-function onPage(next: number) {
-  page.value = next
+  sortBy.value = o.sortBy
+  sortOrder.value = o.sortOrder
+  pageSize.value = o.pageSize
+  // Sorting or resizing the page resets to page 1; otherwise honor the new page.
+  page.value = sortChanged || sizeChanged ? 1 : o.page
   load()
 }
 

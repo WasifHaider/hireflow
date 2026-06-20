@@ -1,83 +1,62 @@
 <template>
   <div class="hf-card table-card">
-    <table class="hf-table">
-      <thead>
-        <tr>
-          <th class="sortable" @click="emit('sort', 'title')">
-            Job <span v-if="sortBy === 'title'" class="caret">{{ sortOrder === 'asc' ? '▲' : '▼' }}</span>
-          </th>
-          <th>Status</th>
-          <th>Applicants</th>
-          <th class="sortable" @click="emit('sort', 'publishedAt')">
-            Opened <span v-if="sortBy === 'publishedAt'" class="caret">{{ sortOrder === 'asc' ? '▲' : '▼' }}</span>
-          </th>
-          <th style="width: 56px"></th>
-        </tr>
-      </thead>
+    <AppDataTable
+      :columns="columns"
+      :rows="jobs"
+      :loading="loading"
+      :server-items-length="total"
+      :page="page"
+      :items-per-page="pageSize"
+      :sort-by="vSortBy"
+      item-value="id"
+      @update:options="onOptions"
+      @row-click="(row) => emit('row-click', row as JobListItem)"
+    >
+      <!-- Job: gradient initial avatar + title + subtitle -->
+      <template #item.title="{ item }">
+        <div class="job-cell">
+          <div class="avatar" :style="avatarStyle((item as JobListItem).title)">
+            {{ initial((item as JobListItem).title) }}
+          </div>
+          <div>
+            <div class="hf-cand-name">{{ (item as JobListItem).title }}</div>
+            <div class="hf-cand-sub">{{ subtitle(item as JobListItem) }}</div>
+          </div>
+        </div>
+      </template>
 
-      <tbody>
-        <!-- loading skeletons -->
-        <template v-if="loading">
-          <tr v-for="n in pageSize" :key="`sk-${n}`" class="skeleton-row">
-            <td><div class="sk sk-job" /></td>
-            <td><div class="sk sk-pill" /></td>
-            <td><div class="sk sk-num" /></td>
-            <td><div class="sk sk-date" /></td>
-            <td></td>
-          </tr>
-        </template>
+      <!-- Status pill -->
+      <template #item.status="{ item }">
+        <JobStatusPill :status="(item as JobListItem).status" />
+      </template>
 
-        <!-- data rows -->
-        <template v-else>
-          <tr v-for="job in jobs" :key="job.id" class="row" @click="emit('row-click', job)">
-            <td>
-              <div class="job-cell">
-                <div class="avatar" :style="avatarStyle(job.title)">{{ initial(job.title) }}</div>
-                <div class="job-text">
-                  <div class="hf-cand-name">{{ job.title }}</div>
-                  <div class="hf-cand-sub">{{ subtitle(job) }}</div>
-                </div>
-              </div>
-            </td>
-            <td><JobStatusPill :status="job.status" /></td>
-            <td class="num">{{ job.applicationCount }}</td>
-            <td class="hf-cand-sub">{{ opened(job) }}</td>
-            <td class="actions" @click.stop>
-              <v-menu location="bottom end">
-                <template #activator="{ props: menuProps }">
-                  <button class="hf-icon-btn" v-bind="menuProps" aria-label="Actions">⋯</button>
-                </template>
-                <v-list class="hf-select-menu" density="compact">
-                  <v-list-item
-                    v-for="a in actionsFor(job)"
-                    :key="a.type"
-                    @click="emit('action', { type: a.type, job })"
-                  >
-                    <v-list-item-title :class="{ danger: a.type === 'delete' }">{{ a.label }}</v-list-item-title>
-                  </v-list-item>
-                </v-list>
-              </v-menu>
-            </td>
-          </tr>
+      <!-- Opened date (publishedAt ?? createdAt) -->
+      <template #item.publishedAt="{ item }">
+        <span class="hf-cand-sub">{{ opened(item as JobListItem) }}</span>
+      </template>
 
-          <!-- empty state -->
-          <tr v-if="jobs.length === 0">
-            <td colspan="5">
-              <div class="empty">No jobs match your filters.</div>
-            </td>
-          </tr>
-        </template>
-      </tbody>
-    </table>
+      <!-- Actions menu — status-dependent -->
+      <template #item.actions="{ item }">
+        <div @click.stop>
+          <v-menu location="bottom end">
+            <template #activator="{ props: menuProps }">
+              <button class="hf-icon-btn" v-bind="menuProps" aria-label="Actions">⋯</button>
+            </template>
+            <v-list class="hf-select-menu" density="compact">
+              <v-list-item
+                v-for="a in actionsFor(item as JobListItem)"
+                :key="a.type"
+                @click="emit('action', { type: a.type, job: item as JobListItem })"
+              >
+                <v-list-item-title :class="{ danger: a.type === 'delete' }">{{ a.label }}</v-list-item-title>
+              </v-list-item>
+            </v-list>
+          </v-menu>
+        </div>
+      </template>
 
-    <div class="footer">
-      <span>Showing <b>{{ jobs.length }}</b> of <b>{{ total }}</b> jobs</span>
-      <div class="pager">
-        <button class="hf-btn ghost" :disabled="page <= 1 || loading" @click="emit('page', page - 1)">Prev</button>
-        <span class="page-ind">Page {{ page }} of {{ Math.max(totalPages, 1) }}</span>
-        <button class="hf-btn ghost" :disabled="page >= totalPages || loading" @click="emit('page', page + 1)">Next</button>
-      </div>
-    </div>
+      <template #empty>No jobs match your filters.</template>
+    </AppDataTable>
   </div>
 </template>
 
@@ -85,7 +64,10 @@
 import { computed } from 'vue'
 import type { JobListItem, JobStatus } from '@/types/job'
 import { JOB_TYPE_LABELS } from '@/types/job'
+import AppDataTable, { type Column, type DataTableOptions } from '@/components/common/AppDataTable.vue'
 import JobStatusPill from './JobStatusPill.vue'
+
+type ServerSortBy = 'createdAt' | 'title' | 'publishedAt'
 
 const props = defineProps<{
   jobs: readonly JobListItem[]
@@ -93,24 +75,41 @@ const props = defineProps<{
   total: number
   page: number
   pageSize: number
-  sortBy: 'createdAt' | 'title' | 'publishedAt'
+  sortBy: ServerSortBy
   sortOrder: 'asc' | 'desc'
 }>()
 
 const emit = defineEmits<{
-  sort: ['title' | 'publishedAt']
-  page: [number]
   'row-click': [JobListItem]
   action: [{ type: 'publish' | 'close' | 'reopen' | 'delete' | 'edit'; job: JobListItem }]
+  'update:options': [{ page: number; pageSize: number; sortBy: ServerSortBy; sortOrder: 'asc' | 'desc' }]
 }>()
 
-const totalPages = computed(() => (props.total === 0 ? 0 : Math.ceil(props.total / props.pageSize)))
+const columns: Column[] = [
+  { key: 'title', title: 'Job', sortable: true },
+  { key: 'status', title: 'Status' },
+  { key: 'applicationCount', title: 'Applicants' },
+  { key: 'publishedAt', title: 'Opened', sortable: true },
+  { key: 'actions', title: '', width: 56, align: 'end' },
+]
+
+// Map our backend sort state into Vuetify's controlled sort-by array.
+const vSortBy = computed(() => [{ key: props.sortBy, order: props.sortOrder }])
+
+const SORTABLE_KEYS: ServerSortBy[] = ['title', 'publishedAt']
+
+function onOptions(o: DataTableOptions): void {
+  const head = o.sortBy[0]
+  const key = head && SORTABLE_KEYS.includes(head.key as ServerSortBy) ? (head.key as ServerSortBy) : 'createdAt'
+  const order = head?.order ?? 'desc'
+  emit('update:options', { page: o.page, pageSize: o.itemsPerPage, sortBy: key, sortOrder: order })
+}
 
 function initial(title: string): string {
   return (title.trim()[0] ?? '?').toUpperCase()
 }
 
-// deterministic indigo-ish gradient from the title so avatars are stable
+// deterministic two-tone gradient from the title so avatars are stable
 function avatarStyle(title: string) {
   let h = 0
   for (let i = 0; i < title.length; i++) h = (h * 31 + title.charCodeAt(i)) % 360
@@ -146,41 +145,6 @@ function actionsFor(job: JobListItem): Action[] {
   padding: 0;
   overflow: hidden;
 }
-.hf-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 13px;
-}
-.hf-table thead th {
-  padding: 10px 16px;
-  text-align: left;
-  font-weight: 500;
-  color: var(--hf-text-muted);
-  font-size: 11.5px;
-  text-transform: uppercase;
-  letter-spacing: 0.02em;
-  border-bottom: 1px solid var(--hf-border);
-  background: var(--hf-surface-alt);
-}
-.hf-table thead th.sortable {
-  cursor: pointer;
-  user-select: none;
-}
-.caret {
-  font-size: 9px;
-  margin-left: 2px;
-}
-.hf-table tbody td {
-  padding: 12px 16px;
-  border-bottom: 1px solid var(--hf-border);
-  vertical-align: middle;
-}
-.row {
-  cursor: pointer;
-}
-.row:hover td {
-  background: var(--hf-surface-alt);
-}
 .job-cell {
   display: flex;
   align-items: center;
@@ -206,12 +170,6 @@ function actionsFor(job: JobListItem): Action[] {
   font-size: 11.5px;
   color: var(--hf-text-subtle);
 }
-.num {
-  font-variant-numeric: tabular-nums;
-}
-.actions {
-  text-align: right;
-}
 .hf-icon-btn {
   width: 30px;
   height: 30px;
@@ -229,44 +187,5 @@ function actionsFor(job: JobListItem): Action[] {
 }
 .danger {
   color: var(--hf-danger);
-}
-.empty {
-  padding: 40px;
-  text-align: center;
-  color: var(--hf-text-muted);
-}
-.footer {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 12px 16px;
-  background: var(--hf-surface-alt);
-  border-top: 1px solid var(--hf-border);
-  font-size: 12.5px;
-  color: var(--hf-text-muted);
-}
-.pager {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-.page-ind {
-  font-variant-numeric: tabular-nums;
-}
-/* skeleton */
-.sk {
-  height: 14px;
-  border-radius: 6px;
-  background: linear-gradient(90deg, #eef0f3 25%, #f6f7f9 50%, #eef0f3 75%);
-  background-size: 200% 100%;
-  animation: sk 1.2s ease-in-out infinite;
-}
-.sk-job { width: 180px; height: 28px; }
-.sk-pill { width: 70px; }
-.sk-num { width: 24px; }
-.sk-date { width: 80px; }
-@keyframes sk {
-  0% { background-position: 200% 0; }
-  100% { background-position: -200% 0; }
 }
 </style>
