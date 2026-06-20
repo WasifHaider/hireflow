@@ -3,8 +3,16 @@
     <JobsToolbar
       :search="search"
       :status="statusFilter"
+      :counts="response.counts"
+      :facets="facets"
+      :filters="filters"
+      :owner-id="ownerId"
+      :hidden-cols="hiddenCols"
       @update:search="onSearch"
       @update:status="onStatus"
+      @update:filters="filters = $event"
+      @update:owner-id="ownerId = $event"
+      @update:hidden-cols="hiddenCols = $event"
       @new="router.push('/jobs/new')"
     />
 
@@ -43,7 +51,8 @@
 import { reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useJobsStore } from '@/stores/jobs.store'
-import type { JobListItem, JobListResponse, JobStatus } from '@/types/job'
+import type { JobFacets, JobListItem, JobListResponse, JobStatus } from '@/types/job'
+import type { JobFilters } from '@/components/jobs/JobsFiltersMenu.vue'
 import JobsToolbar from '@/components/jobs/JobsToolbar.vue'
 import JobsTable from '@/components/jobs/JobsTable.vue'
 import AppButton from '@/components/common/AppButton.vue'
@@ -60,6 +69,12 @@ const search = ref('')
 const statusFilter = ref<StatusFilter>('ALL')
 const sortBy = ref<SortBy>('createdAt')
 const sortOrder = ref<'asc' | 'desc'>('desc')
+
+// Toolbar filter state — wired to real backend in Task 10.
+const filters = ref<JobFilters>({})
+const ownerId = ref<string | undefined>(undefined)
+const hiddenCols = ref<string[]>([])
+const facets = ref<JobFacets>({ departments: [], locations: [], owners: [] })
 
 const response = ref<JobListResponse>({ data: [], total: 0, page: 1, pageSize: pageSize.value, totalPages: 0, counts: { all: 0, DRAFT: 0, PUBLISHED: 0, CLOSED: 0 } })
 
