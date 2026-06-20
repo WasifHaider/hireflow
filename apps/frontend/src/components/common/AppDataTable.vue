@@ -11,7 +11,7 @@
     :items-per-page-options="itemsPerPageOptions"
     :loading="loading"
     :sort-by="sortBy"
-    :hide-default-footer="!server"
+    hide-default-footer
     @update:options="onOptions"
     @click:row="(_e: Event, ctx: { item: Row }) => emit('row-click', ctx.item as Row)"
   >
