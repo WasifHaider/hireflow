@@ -28,22 +28,14 @@ const tabs = computed<{ label: string; value: StatusFilter; count: number }[]>((
 ])
 </script>
 
+<!-- Wrapper/tab/active styling comes from the global .hf-tab-row classes in
+     src/assets/hireflow.css (ported verbatim from the mockup styles.css:
+     gray track, white active pill + shadow). Only the count needs styling. -->
 <style scoped>
-.hf-tab-row { display: flex; align-items: center; gap: 2px; }
-.tab {
-  display: flex; align-items: center; gap: 6px;
-  padding: 7px 12px;
-  font-size: 13px; font-weight: 500;
-  color: var(--hf-text-muted);
-  border-radius: 8px;
-  cursor: pointer;
-}
-.tab:hover { background: var(--hf-bg); color: var(--hf-text); }
-.tab.active { color: var(--hf-primary); background: var(--hf-primary-soft); }
 .count {
+  margin-left: 6px;
   font-family: var(--hf-mono);
   font-size: 10.5px;
   color: var(--hf-text-subtle);
 }
-.tab.active .count { color: var(--hf-primary); }
 </style>
