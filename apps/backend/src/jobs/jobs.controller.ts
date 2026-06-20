@@ -53,6 +53,14 @@ export class JobsController {
     return this.jobsService.findAll(query, user.companyId);
   }
 
+  @Get('facets')
+  @ApiOperation({ summary: 'Distinct departments, locations, and owners for filters' })
+  @ApiResponse({ status: 200, description: 'Facet option lists' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  getFacets(@CurrentUser() user: SafeUser) {
+    return this.jobsService.getFacets(user.companyId);
+  }
+
   @Get(':id')
   @ApiOperation({ summary: 'Get a single job by ID' })
   @ApiResponse({ status: 200, description: 'Job found' })

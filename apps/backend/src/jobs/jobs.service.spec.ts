@@ -97,3 +97,41 @@ describe('JobsService.findAll', () => {
     });
   });
 });
+
+describe('getFacets', () => {
+  let service: JobsService;
+  let prisma: {
+    $transaction: jest.Mock;
+    job: { findMany: jest.Mock; count: jest.Mock; groupBy: jest.Mock };
+  };
+
+  beforeEach(async () => {
+    prisma = {
+      $transaction: jest.fn(),
+      job: { findMany: jest.fn(), count: jest.fn(), groupBy: jest.fn() },
+    };
+    const moduleRef = await Test.createTestingModule({
+      providers: [JobsService, { provide: PrismaService, useValue: prisma }],
+    }).compile();
+    service = moduleRef.get(JobsService);
+  });
+
+  it('returns distinct sorted departments/locations and distinct owners', async () => {
+    prisma.job.findMany.mockResolvedValue([
+      { department: 'Engineering', location: 'Austin, TX', createdBy: { id: 'u1', fullName: 'Jamie', avatarUrl: null } },
+      { department: 'Design', location: 'Austin, TX', createdBy: { id: 'u2', fullName: 'Maya', avatarUrl: null } },
+      { department: 'Engineering', location: 'Remote', createdBy: { id: 'u1', fullName: 'Jamie', avatarUrl: null } },
+      { department: null, location: 'Remote', createdBy: { id: 'u1', fullName: 'Jamie', avatarUrl: null } },
+    ] as any);
+
+    const res = await service.getFacets('company-1');
+
+    expect(res.departments).toEqual(['Design', 'Engineering']);
+    expect(res.locations).toEqual(['Austin, TX', 'Remote']);
+    expect(res.owners).toEqual([
+      { id: 'u1', fullName: 'Jamie', avatarUrl: null },
+      { id: 'u2', fullName: 'Maya', avatarUrl: null },
+    ]);
+    expect(prisma.job.findMany.mock.calls[0][0].where).toMatchObject({ companyId: 'company-1', deletedAt: null });
+  });
+});

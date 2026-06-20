@@ -148,4 +148,23 @@ export class JobsService {
       select: { id: true, deletedAt: true },
     });
   }
+
+  async getFacets(companyId: string) {
+    const rows = await this.prisma.job.findMany({
+      where: { companyId, deletedAt: null },
+      select: {
+        department: true,
+        location: true,
+        createdBy: { select: { id: true, fullName: true, avatarUrl: true } },
+      },
+    });
+
+    const departments = [...new Set(rows.map((r) => r.department).filter((d): d is string => !!d))].sort();
+    const locations = [...new Set(rows.map((r) => r.location).filter((l): l is string => !!l))].sort();
+    const ownersMap = new Map<string, { id: string; fullName: string; avatarUrl: string | null }>();
+    for (const r of rows) ownersMap.set(r.createdBy.id, r.createdBy);
+    const owners = [...ownersMap.values()].sort((a, b) => a.fullName.localeCompare(b.fullName));
+
+    return { departments, locations, owners };
+  }
 }
