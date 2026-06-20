@@ -26,7 +26,7 @@ export class DashboardService {
           SELECT to_char(date_trunc('day', applied_at), 'YYYY-MM-DD') AS date,
                  count(*)::int AS count
           FROM applications
-          WHERE company_id = ${companyId}::uuid
+          WHERE company_id = ${companyId}
             AND applied_at >= ${since}
           GROUP BY 1
           ORDER BY 1
