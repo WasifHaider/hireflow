@@ -84,7 +84,17 @@ const sortOrder = ref<'asc' | 'desc'>('desc')
 // Real filter state — persisted locally for hiddenCols
 const filters = ref<JobFilters>({})
 const ownerId = ref<string | undefined>(undefined)
-const hiddenCols = ref<string[]>(JSON.parse(localStorage.getItem('hf.jobs.hiddenCols') ?? '[]'))
+
+function readHiddenCols(): string[] {
+  try {
+    const v = JSON.parse(localStorage.getItem('hf.jobs.hiddenCols') ?? '[]')
+    return Array.isArray(v) ? v : []
+  } catch {
+    return []
+  }
+}
+
+const hiddenCols = ref<string[]>(readHiddenCols())
 
 watch(hiddenCols, (v) => localStorage.setItem('hf.jobs.hiddenCols', JSON.stringify(v)), { deep: true })
 

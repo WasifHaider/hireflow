@@ -116,7 +116,7 @@ function clearAll() {
   display: flex;
   flex-direction: column;
   gap: 10px;
-  background: white;
+  background: var(--hf-surface);
 }
 .actions {
   display: flex;

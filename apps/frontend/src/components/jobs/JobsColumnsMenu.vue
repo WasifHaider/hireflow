@@ -43,7 +43,7 @@ function toggle(key: string) {
   flex-direction: column;
   gap: 8px;
   min-width: 150px;
-  background: white;
+  background: var(--hf-surface);
 }
 .row {
   display: flex;
