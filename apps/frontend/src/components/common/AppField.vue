@@ -13,7 +13,6 @@
       :items="items"
       :placeholder="placeholder"
       :disabled="disabled"
-      persistent-placeholder
       multiple
       :menu-props="menuProps"
       @blur="emit('blur')"
@@ -27,7 +26,6 @@
       :items="items"
       :placeholder="placeholder"
       :disabled="disabled"
-      persistent-placeholder
       :menu-props="menuProps"
       @blur="emit('blur')"
     />
@@ -192,15 +190,32 @@ const menuProps = computed(() => ({ contentClass: `hf-select-menu ${menuClass}` 
 }
 
 /* ── Vuetify field overrides ─────────────────────────────────────────────── */
+/* Single source of truth for field chrome (matches design styles.css .hf-input):
+   light --hf-border at rest, indigo border + soft ring on focus. */
 :deep(.v-field) {
   border-radius: 9px;
   box-shadow: none;
+  --v-field-border-opacity: 1;
+  --v-field-padding-start: 14px;
+  --v-field-padding-end: 14px;
+  transition:
+    box-shadow 0.15s ease,
+    border-color 0.15s ease;
 }
 :deep(.v-field--variant-outlined .v-field__outline__start),
 :deep(.v-field--variant-outlined .v-field__outline__end),
 :deep(.v-field--variant-outlined .v-field__outline__notch::before),
 :deep(.v-field--variant-outlined .v-field__outline__notch::after) {
-  border-color: #a3a4a8;
+  border-color: var(--hf-border);
+}
+:deep(.v-field--focused) {
+  box-shadow: 0 0 0 3px var(--hf-primary-soft);
+}
+:deep(.v-field--focused .v-field__outline__start),
+:deep(.v-field--focused .v-field__outline__end),
+:deep(.v-field--focused .v-field__outline__notch::before),
+:deep(.v-field--focused .v-field__outline__notch::after) {
+  border-color: var(--hf-primary);
 }
 :deep(.v-field--focused .v-field__outline) {
   --v-field-border-width: 1px;
@@ -213,6 +228,23 @@ const menuProps = computed(() => ({ contentClass: `hf-select-menu ${menuClass}` 
   padding-top: 0;
   padding-bottom: 0;
   font-size: 14px;
+}
+:deep(.v-field__input::placeholder),
+:deep(input::placeholder) {
+  color: #9ca3af;
+  opacity: 1;
+}
+/* a selected value (or persistent-placeholder) makes the field "active" → Vuetify
+   floats the label and reserves a label-row of top padding, inflating the height.
+   We use external labels, so collapse that reserve to match the 44px text fields. */
+:deep(.v-select .v-field__field),
+:deep(.v-autocomplete .v-field__field) {
+  padding-top: 0;
+  padding-bottom: 0;
+}
+:deep(.v-select .v-field__input),
+:deep(.v-autocomplete .v-field__input) {
+  align-items: center;
 }
 :deep(.v-select .v-field .v-field__input > input),
 :deep(.v-autocomplete .v-field .v-field__input > input) {
