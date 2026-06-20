@@ -61,7 +61,7 @@ const statusFilter = ref<StatusFilter>('ALL')
 const sortBy = ref<SortBy>('createdAt')
 const sortOrder = ref<'asc' | 'desc'>('desc')
 
-const response = ref<JobListResponse>({ data: [], total: 0, page: 1, pageSize: pageSize.value, totalPages: 0 })
+const response = ref<JobListResponse>({ data: [], total: 0, page: 1, pageSize: pageSize.value, totalPages: 0, counts: { all: 0, DRAFT: 0, PUBLISHED: 0, CLOSED: 0 } })
 
 const confirmOpen = ref(false)
 const pendingDelete = ref<JobListItem | null>(null)

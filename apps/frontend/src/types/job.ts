@@ -133,6 +133,21 @@ export const EMPLOYMENT_LABELS: Record<EmploymentType, string> = {
   INTERNSHIP: 'Internship',
 }
 
+// Canonical export name used by filter UI and facets — same values as EMPLOYMENT_LABELS.
+export const EMPLOYMENT_TYPE_LABELS: Record<EmploymentType, string> = EMPLOYMENT_LABELS
+
+export interface JobOwner {
+  id: string
+  fullName: string
+  avatarUrl: string | null
+}
+
+export interface JobFacets {
+  departments: string[]
+  locations: string[]
+  owners: JobOwner[]
+}
+
 export const JOB_TYPE_LABELS: Record<JobType, string> = {
   ONSITE: 'Onsite',
   HYBRID: 'Hybrid',
@@ -141,6 +156,7 @@ export const JOB_TYPE_LABELS: Record<JobType, string> = {
 
 export interface JobListItem extends Job {
   applicationCount: number
+  owner: JobOwner
 }
 
 export interface JobListResponse {
@@ -149,6 +165,7 @@ export interface JobListResponse {
   page: number
   pageSize: number
   totalPages: number
+  counts: { all: number; DRAFT: number; PUBLISHED: number; CLOSED: number }
 }
 
 export interface JobListQuery {
@@ -158,4 +175,9 @@ export interface JobListQuery {
   search?: string
   sortBy?: 'createdAt' | 'title' | 'publishedAt'
   sortOrder?: 'asc' | 'desc'
+  department?: string
+  location?: string
+  jobType?: JobType
+  employmentType?: EmploymentType
+  ownerId?: string
 }

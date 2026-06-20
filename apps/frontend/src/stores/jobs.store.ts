@@ -1,12 +1,13 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import api, { getApiErrorMessage } from '@/plugins/axios'
-import type { Job, JobPayload, JobStatus, JobListQuery, JobListResponse } from '@/types/job'
+import type { Job, JobPayload, JobStatus, JobListQuery, JobListResponse, JobFacets } from '@/types/job'
 
 export const useJobsStore = defineStore('jobs', () => {
   const saving = ref(false)
   const loading = ref(false)
   const error = ref<string | null>(null)
+  const facets = ref<JobFacets>({ departments: [], locations: [], owners: [] })
 
   async function createJob(payload: JobPayload): Promise<Job> {
     saving.value = true
@@ -61,6 +62,11 @@ export const useJobsStore = defineStore('jobs', () => {
       if (query.search) params.search = query.search
       if (query.sortBy) params.sortBy = query.sortBy
       if (query.sortOrder) params.sortOrder = query.sortOrder
+      if (query.department) params.department = query.department
+      if (query.location) params.location = query.location
+      if (query.jobType) params.jobType = query.jobType
+      if (query.employmentType) params.employmentType = query.employmentType
+      if (query.ownerId) params.ownerId = query.ownerId
       const { data } = await api.get<JobListResponse>('/jobs', { params })
       return data
     } catch (e) {
@@ -69,6 +75,11 @@ export const useJobsStore = defineStore('jobs', () => {
     } finally {
       loading.value = false
     }
+  }
+
+  async function fetchFacets(): Promise<void> {
+    const { data } = await api.get<JobFacets>('/jobs/facets')
+    facets.value = data
   }
 
   async function setJobStatus(id: string, status: JobStatus): Promise<Job> {
@@ -88,5 +99,5 @@ export const useJobsStore = defineStore('jobs', () => {
     }
   }
 
-  return { saving, loading, error, createJob, updateJob, fetchJob, fetchJobs, setJobStatus, deleteJob }
+  return { saving, loading, error, facets, createJob, updateJob, fetchJob, fetchJobs, fetchFacets, setJobStatus, deleteJob }
 })
