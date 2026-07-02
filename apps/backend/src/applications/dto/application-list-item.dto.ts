@@ -2,6 +2,9 @@ import { ApiProperty } from '@nestjs/swagger';
 import { ApplicationStage } from '@prisma/client';
 
 class ApplicationListCandidateDto {
+  @ApiProperty({ example: 'c1a2b3d4-e5f6-7890-abcd-ef1234567890' })
+  id!: string;
+
   @ApiProperty({ example: 'Sarah Chen' })
   fullName!: string;
 

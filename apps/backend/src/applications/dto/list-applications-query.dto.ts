@@ -1,7 +1,7 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { ApplicationStage } from '@prisma/client';
 import { Transform } from 'class-transformer';
-import { IsEnum, IsIn, IsInt, IsOptional, IsUUID, Max, Min } from 'class-validator';
+import { IsArray, IsEnum, IsIn, IsInt, IsOptional, IsString, IsUUID, Max, Min } from 'class-validator';
 
 const SORT_BY_FIELDS = ['appliedAt', 'aiFitScore'] as const;
 const SORT_ORDERS = ['asc', 'desc'] as const;
@@ -43,6 +43,15 @@ export class ListApplicationsQueryDto {
   @IsEnum(ApplicationStage)
   stage?: ApplicationStage;
 
+  @ApiPropertyOptional({ isArray: true, enum: ApplicationStage, description: 'Filter by multiple stages (comma-separated)' })
+  @IsOptional()
+  @Transform(({ value }: { value: unknown }) =>
+    typeof value === 'string' ? value.split(',').filter(Boolean) : value,
+  )
+  @IsArray()
+  @IsEnum(ApplicationStage, { each: true })
+  stages?: ApplicationStage[];
+
   @ApiPropertyOptional({ enum: SORT_BY_FIELDS, default: 'appliedAt' })
   @IsOptional()
   @IsIn([...SORT_BY_FIELDS])
@@ -52,4 +61,33 @@ export class ListApplicationsQueryDto {
   @IsOptional()
   @IsIn([...SORT_ORDERS])
   sortOrder: ApplicationSortOrder = 'desc';
+
+  @ApiPropertyOptional({ description: 'Search candidate name or email' })
+  @IsOptional()
+  @IsString()
+  q?: string;
+
+  @ApiPropertyOptional({ minimum: 0, maximum: 100 })
+  @IsOptional()
+  @Transform(({ value }: { value: unknown }) => {
+    if (value === undefined || value === '') return undefined;
+    const n = Number(value);
+    return Number.isNaN(n) ? value : n;
+  })
+  @IsInt()
+  @Min(0)
+  @Max(100)
+  scoreMin?: number;
+
+  @ApiPropertyOptional({ minimum: 0, maximum: 100 })
+  @IsOptional()
+  @Transform(({ value }: { value: unknown }) => {
+    if (value === undefined || value === '') return undefined;
+    const n = Number(value);
+    return Number.isNaN(n) ? value : n;
+  })
+  @IsInt()
+  @Min(0)
+  @Max(100)
+  scoreMax?: number;
 }

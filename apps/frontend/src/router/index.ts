@@ -54,6 +54,27 @@ const router = createRouter({
           component: () => import('@/views/JobForm.vue'),
           props: true,
         },
+        {
+          path: '/candidates',
+          name: 'candidates',
+          component: () => import('@/views/CandidatesList.vue'),
+        },
+        {
+          path: '/candidates/:id',
+          name: 'candidate-detail',
+          component: () => import('@/views/CandidateDetail.vue'),
+          props: true,
+        },
+        {
+          path: '/pipeline',
+          name: 'pipeline',
+          component: () => import('@/views/Pipeline.vue'),
+        },
+        {
+          path: '/analytics',
+          name: 'analytics',
+          component: () => import('@/views/Analytics.vue'),
+        },
       ],
     },
     // ── Candidate (job-seeker) auth ──────────────────────────────────────────

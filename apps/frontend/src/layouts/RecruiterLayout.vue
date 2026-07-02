@@ -107,7 +107,7 @@ const navItems: { name: string; icon: string; to?: string; count?: number }[] = 
   { name: 'Jobs', icon: 'briefcase', count: 12, to: '/jobs' },
   { name: 'Candidates', icon: 'users', count: 284, to: '/candidates' },
   { name: 'Pipeline', icon: 'columns', to: '/pipeline' },
-  { name: 'Analytics', icon: 'chart', to: '/analytics' },
+  // { name: 'Analytics', icon: 'chart', to: '/analytics' },
 ]
 </script>
 

@@ -34,6 +34,7 @@
         :total="response.total"
         :page="page"
         :page-size="pageSize"
+        noun="jobs"
         @update:page="onPage"
         @update:page-size="onPageSize"
       />

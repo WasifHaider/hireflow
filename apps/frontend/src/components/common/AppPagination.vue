@@ -1,7 +1,7 @@
 <template>
   <div class="hf-pagination">
     <span class="left">
-      Showing <strong>{{ rangeStart }}–{{ rangeEnd }}</strong> of <strong>{{ total }}</strong> jobs
+      Showing <strong>{{ rangeStart }}–{{ rangeEnd }}</strong> of <strong>{{ total }}</strong> {{ noun ?? 'results' }}
     </span>
     <div class="right">
       <span class="rpp-label">Rows per page:</span>
@@ -22,7 +22,7 @@
 import { computed } from 'vue'
 import HfIcon from './HfIcon.vue'
 
-const props = defineProps<{ total: number; page: number; pageSize: number; pageSizeOptions?: number[] }>()
+const props = defineProps<{ total: number; page: number; pageSize: number; pageSizeOptions?: number[]; noun?: string }>()
 const emit = defineEmits<{ 'update:page': [number]; 'update:pageSize': [number] }>()
 
 const totalPages = computed(() => (props.total === 0 ? 1 : Math.ceil(props.total / props.pageSize)))

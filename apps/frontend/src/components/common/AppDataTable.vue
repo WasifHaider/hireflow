@@ -35,7 +35,7 @@
         <div v-if="c.subField" class="hf-cand-sub">{{ sub(item, c) }}</div>
       </template>
 
-      <span v-else-if="c.type === 'score'" class="hf-score" :class="scoreLevel(val(item, c))">
+      <span v-else-if="c.type === 'score'" class="hf-score" :class="scoreLevel(val(item, c) as number | null | undefined)">
         {{ text(item, c) }}
       </span>
 
@@ -73,6 +73,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import HfIcon from '@/components/common/HfIcon.vue'
+import { scoreLevel } from '@/utils/score'
 
 /* Reusable data table styled to the HireFlow design (mockup hf-table look),
    backed by Vuetify's v-data-table-server so it works for BOTH:
@@ -194,10 +195,6 @@ function sub(row: Row, c: Column): string {
   const v = row[c.subField]
   return v == null ? '' : String(v)
 }
-function scoreLevel(v: unknown): string {
-  const n = Number(v)
-  return n >= 80 ? 'high' : n >= 60 ? 'mid' : 'low'
-}
 function avatarInitials(name: string): string {
   return name
     .split(' ')
@@ -233,7 +230,7 @@ function avatarInitials(name: string): string {
   border-bottom: 1px solid var(--hf-border) !important;
 }
 .app-data-table :deep(tbody td:first-child) { padding-left: 20px !important; }
-.app-data-table :deep(tbody td:last-child) { text-align: right; padding-right: 16px !important; }
+.app-data-table :deep(tbody td:last-child) { padding-right: 16px !important; }
 .app-data-table :deep(tbody tr:last-child td) { border-bottom: 0 !important; }
 .app-data-table :deep(tbody tr:hover td) { background: var(--hf-surface-alt); }
 .app-data-table :deep(tbody tr) { cursor: pointer; }
