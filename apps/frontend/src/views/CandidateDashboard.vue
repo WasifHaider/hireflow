@@ -2,154 +2,274 @@
   <!-- Content only; chrome (app bar + nav) lives in CandidateLayout. -->
   <div class="cand-content">
     <!-- Heading -->
-      <div class="cand-head">
-        <div>
-          <div class="hf-muted" style="font-size: 13px; margin-bottom: 4px">Welcome back, {{ firstName }}</div>
-          <h1 class="cand-title">Your applications</h1>
+    <div class="cand-head">
+      <div>
+        <div class="hf-muted" style="font-size: 13px; margin-bottom: 4px">
+          Welcome back, {{ firstName }}
         </div>
-        <div class="cand-head-actions">
-          <button class="hf-btn ghost"><HfIcon name="search" :size="14" />Find jobs</button>
-          <button class="hf-btn primary"><HfIcon name="plus" :size="14" />Add an application</button>
-        </div>
+        <h1 class="cand-title">Your applications</h1>
       </div>
+    </div>
 
-      <!-- Offer highlight banner -->
-      <div class="offer-banner">
+    <!-- Loading skeleton -->
+    <div v-if="loading" class="app-list">
+      <div v-for="n in 3" :key="n" class="hf-card app-card skeleton-card">
+        <div class="sk-line" style="width: 40%" />
+        <div class="sk-line" style="width: 70%" />
+        <div class="sk-line" style="width: 100%; height: 18px" />
+      </div>
+    </div>
+
+    <!-- Error -->
+    <div v-else-if="error" class="hf-card state-card">
+      <div class="state-title">Couldn’t load your applications</div>
+      <div class="hf-muted" style="font-size: 13px">{{ error }}</div>
+      <button class="hf-btn primary" style="margin-top: 14px" @click="load">Try again</button>
+    </div>
+
+    <!-- Empty -->
+    <div v-else-if="applications.length === 0" class="hf-card state-card">
+      <div style="font-size: 30px; margin-bottom: 8px">📭</div>
+      <div class="state-title">No applications yet</div>
+      <div class="hf-muted" style="font-size: 13px; max-width: 360px">
+        When you apply to a role through a company’s careers page, it’ll show up here so you can
+        track its progress.
+      </div>
+    </div>
+
+    <template v-else>
+      <!-- Offer highlight banner (only when a real offer exists) -->
+      <div v-if="offerApp" class="offer-banner">
         <div style="font-size: 28px">🎉</div>
         <div style="flex: 1">
-          <div class="offer-title">You have an offer from Vertex AI Labs</div>
-          <div class="offer-sub">ML Infrastructure Engineer · $200k – $250k · Respond by May 20</div>
+          <div class="offer-title">You have an offer from {{ offerApp.job.company.name }}</div>
+          <div class="offer-sub">
+            {{ offerApp.job.title }}<template v-if="salary(offerApp)"> · {{ salary(offerApp) }}</template>
+          </div>
         </div>
-        <button class="hf-btn ghost" style="background: white">View offer<HfIcon name="arrowRight" :size="14" /></button>
+        <button class="hf-btn ghost" style="background: white" @click="activeFilter = 'Offers'">
+          View offer<HfIcon name="arrowRight" :size="14" />
+        </button>
       </div>
 
       <!-- Filter chips -->
       <div class="chips-row">
-        <div v-for="c in filters" :key="c.name" class="chip" :class="{ active: c.active }">
+        <div
+          v-for="c in filters"
+          :key="c.name"
+          class="chip"
+          :class="{ active: c.name === activeFilter }"
+          @click="activeFilter = c.name"
+        >
           {{ c.name }}
-          <span class="chip-count" :class="{ active: c.active }">{{ c.n }}</span>
-        </div>
-        <div class="sort-wrap">
-          <span class="hf-muted" style="font-size: 12px">Sort:</span>
-          <div class="hf-btn ghost" style="height: 30px; padding: 0 10px; font-size: 12px">
-            Most recent<HfIcon name="chevron" :size="14" />
-          </div>
+          <span class="chip-count" :class="{ active: c.name === activeFilter }">{{ c.n }}</span>
         </div>
       </div>
 
       <!-- Application list -->
-      <div class="app-list">
-        <div v-for="a in applications" :key="a.company" class="hf-card app-card">
+      <div v-if="visibleApplications.length" class="app-list">
+        <div v-for="a in visibleApplications" :key="a.id" class="hf-card app-card">
           <div class="app-top">
-            <div class="app-logo" :style="{ background: `linear-gradient(135deg, ${a.color}, ${a.color}cc)` }">
-              {{ a.company[0] }}
+            <div
+              class="app-logo"
+              :style="{ background: logoGradient(a.job.company.name) }"
+            >
+              <img v-if="a.job.company.logoUrl" :src="a.job.company.logoUrl" alt="" class="app-logo-img" />
+              <template v-else>{{ a.job.company.name.charAt(0).toUpperCase() }}</template>
             </div>
             <div style="flex: 1; min-width: 0">
-              <div class="hf-muted" style="font-size: 12px; font-weight: 500">{{ a.company }}</div>
-              <div class="app-role">{{ a.role }}</div>
+              <div class="hf-muted" style="font-size: 12px; font-weight: 500">
+                {{ a.job.company.name }}
+              </div>
+              <div class="app-role">{{ a.job.title }}</div>
               <div class="app-meta">
-                <span><HfIcon name="map" :size="14" />{{ a.location }}</span>
-                <span>💰 {{ a.salary }}</span>
-                <span><HfIcon name="cal" :size="14" />Applied {{ a.applied }}</span>
+                <span v-if="location(a)"><HfIcon name="map" :size="14" />{{ location(a) }}</span>
+                <span v-if="salary(a)">💰 {{ salary(a) }}</span>
+                <span><HfIcon name="cal" :size="14" />Applied {{ appliedDate(a.appliedAt) }}</span>
               </div>
             </div>
             <div class="app-fit">
-              <span class="hf-score" :class="scoreLevel(a.score)">{{ a.score }}</span>
+              <span v-if="a.aiFitScore !== null" class="hf-score" :class="scoreLevel(a.aiFitScore)">
+                {{ a.aiFitScore }}
+              </span>
+              <span v-else class="hf-score" style="opacity: 0.5">—</span>
               <span class="app-fit-label">Your fit</span>
             </div>
           </div>
 
-          <!-- Stage stepper -->
-          <div class="stepper">
+          <!-- Stage stepper (hidden for rejected) -->
+          <div v-if="a.currentStage !== 'REJECTED'" class="stepper">
             <template v-for="(s, i) in stages" :key="s">
               <div class="step">
-                <div class="step-dot" :class="{ done: i < a.stage, active: i === a.stage }">
-                  <HfIcon v-if="i < a.stage" name="check" :size="10" :stroke="3" />
+                <div
+                  class="step-dot"
+                  :class="{ done: i < stageIndex(a.currentStage), active: i === stageIndex(a.currentStage) }"
+                >
+                  <HfIcon v-if="i < stageIndex(a.currentStage)" name="check" :size="10" :stroke="3" />
                 </div>
-                <div class="step-label" :class="{ on: i <= a.stage, active: i === a.stage }">{{ s }}</div>
+                <div
+                  class="step-label"
+                  :class="{ on: i <= stageIndex(a.currentStage), active: i === stageIndex(a.currentStage) }"
+                >
+                  {{ s }}
+                </div>
               </div>
-              <div v-if="i < stages.length - 1" class="step-line" :class="{ done: i < a.stage }" />
+              <div v-if="i < stages.length - 1" class="step-line" :class="{ done: i < stageIndex(a.currentStage) }" />
             </template>
           </div>
+          <div v-else class="rejected-bar">Not selected for this role</div>
 
           <!-- Activity footer -->
           <div class="app-foot">
-            <div class="app-foot-icon" :class="a.activityKind">
-              <template v-if="a.activityKind === 'offer'">🎉</template>
-              <HfIcon v-else-if="a.activityKind === 'positive'" name="cal" :size="14" />
+            <div class="app-foot-icon" :class="activityKind(a.currentStage)">
+              <template v-if="a.currentStage === 'OFFER'">🎉</template>
+              <HfIcon v-else-if="activityKind(a.currentStage) === 'positive'" name="cal" :size="14" />
               <HfIcon v-else name="clock" :size="13" />
             </div>
-            <div style="font-size: 13px; font-weight: 500; flex: 1">{{ a.activity }}</div>
-            <button class="hf-btn ghost">View details<HfIcon name="arrowRight" :size="14" /></button>
+            <div style="font-size: 13px; font-weight: 500; flex: 1">
+              {{ activityText(a.currentStage) }}
+            </div>
+            <RouterLink
+              v-if="a.job.jobAvailable"
+              class="hf-btn ghost"
+              :to="{ name: 'public-job', params: { companySlug: a.job.company.slug, jobId: a.job.id } }"
+            >
+              View job<HfIcon name="arrowRight" :size="14" />
+            </RouterLink>
+            <span v-else class="hf-muted" style="font-size: 12px">No longer accepting</span>
           </div>
         </div>
       </div>
 
-      <!-- Suggested for you -->
-      <div style="margin-top: 8px">
-        <div class="suggest-head">
-          <h2 class="suggest-title">Jobs we picked for you</h2>
-          <span class="hf-tag accent" style="margin-left: 10px">Based on your profile</span>
-          <a class="suggest-link">Browse all jobs</a>
-        </div>
-        <div class="suggest-grid">
-          <div v-for="j in suggested" :key="j.co" class="hf-card suggest-card">
-            <div style="display: flex; align-items: center; gap: 10px">
-              <div class="suggest-logo" :style="{ background: j.c }">{{ j.co[0] }}</div>
-              <div style="flex: 1; min-width: 0">
-                <div class="hf-muted" style="font-size: 11px">{{ j.co }}</div>
-                <div class="suggest-role">{{ j.role }}</div>
-              </div>
-              <span class="hf-score" :class="scoreLevel(j.match)">{{ j.match }}</span>
-            </div>
-            <div class="suggest-loc"><span><HfIcon name="map" :size="14" />{{ j.loc }}</span></div>
-            <div class="suggest-foot">
-              <span style="font-size: 12.5px; font-weight: 500">{{ j.sal }}</span>
-              <button class="hf-btn ghost" style="height: 28px; padding: 0 10px; font-size: 12px">Apply<HfIcon name="arrowRight" :size="14" /></button>
-            </div>
-          </div>
-        </div>
+      <!-- Filtered-to-empty -->
+      <div v-else class="hf-card state-card">
+        <div class="hf-muted" style="font-size: 13px">No applications in “{{ activeFilter }}”.</div>
       </div>
+    </template>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, onMounted, ref } from 'vue'
+import { RouterLink } from 'vue-router'
+import { storeToRefs } from 'pinia'
 import { useCandidateAuthStore } from '@/stores/candidateAuth.store'
+import { useCandidateApplicationsStore } from '@/stores/candidateApplications.store'
+import { scoreLevel } from '@/utils/score'
+import type { CandidateApplication, CandidateAppStage } from '@/types/candidateApplication'
 import HfIcon from '@/components/common/HfIcon.vue'
 
-/* Candidate dashboard content. Application data is placeholder until
-   GET /candidate/me/applications is wired in the backend-integration pass;
-   the greeting comes from the candidate store. */
 const candidateAuth = useCandidateAuthStore()
+const appsStore = useCandidateApplicationsStore()
+const { applications, loading, error } = storeToRefs(appsStore)
 
 const firstName = computed(() => (candidateAuth.candidateName || 'there').split(' ')[0])
 
 const stages = ['Applied', 'Screened', 'Interview', 'Offer', 'Hired']
+const STAGE_INDEX: Record<CandidateAppStage, number> = {
+  APPLIED: 0,
+  SCREENED: 1,
+  INTERVIEW: 2,
+  OFFER: 3,
+  HIRED: 4,
+  REJECTED: -1,
+}
+function stageIndex(stage: CandidateAppStage): number {
+  return STAGE_INDEX[stage]
+}
 
-const applications = [
-  { company: 'Northwind Logistics', role: 'Senior Backend Engineer', applied: 'Apr 22, 2026', stage: 3, score: 92, salary: '$180k – $230k', location: 'Austin, TX · Hybrid', activity: 'Interview scheduled for May 14', activityKind: 'positive', color: '#F97316' },
-  { company: 'Lumen Health', role: 'Staff Software Engineer, Platform', applied: 'Apr 18, 2026', stage: 2, score: 84, salary: '$210k – $260k', location: 'Remote · USA', activity: 'Recruiter screen — Apr 28', activityKind: 'positive', color: '#0EA5E9' },
-  { company: 'Vertex AI Labs', role: 'ML Infrastructure Engineer', applied: 'Apr 15, 2026', stage: 4, score: 88, salary: '$200k – $250k', location: 'San Francisco, CA', activity: 'Offer extended — respond by May 20', activityKind: 'offer', color: '#8B5CF6' },
-  { company: 'Cobalt Studio', role: 'Backend Engineer, Payments', applied: 'Apr 03, 2026', stage: 1, score: 78, salary: '$160k – $200k', location: 'New York, NY', activity: 'AI screen passed · waiting on recruiter', activityKind: 'neutral', color: '#10B981' },
-]
+function load() {
+  appsStore.fetchApplications()
+}
+onMounted(load)
 
-const filters = [
-  { name: 'All', n: 4, active: true },
-  { name: 'Active', n: 3 },
-  { name: 'Interviewing', n: 1 },
-  { name: 'Offers', n: 1 },
-  { name: 'Closed', n: 0 },
-]
+// ── Filters (client-side over the fetched list) ──
+const activeFilter = ref('All')
+const ACTIVE_STAGES: CandidateAppStage[] = ['APPLIED', 'SCREENED', 'INTERVIEW']
+const CLOSED_STAGES: CandidateAppStage[] = ['HIRED', 'REJECTED']
 
-const suggested = [
-  { co: 'Mercato', role: 'Principal Backend Engineer', loc: 'Remote · USA', match: 96, sal: '$240k+', c: '#EC4899' },
-  { co: 'Foundry Robotics', role: 'Distributed Systems Engineer', loc: 'San Francisco, CA', match: 89, sal: '$210k – $260k', c: '#0F172A' },
-  { co: 'Helix Bio', role: 'Senior Platform Engineer', loc: 'Boston, MA · Hybrid', match: 84, sal: '$190k – $240k', c: '#10B981' },
-]
+const counts = computed(() => ({
+  All: applications.value.length,
+  Active: applications.value.filter((a) => ACTIVE_STAGES.includes(a.currentStage)).length,
+  Interviewing: applications.value.filter((a) => a.currentStage === 'INTERVIEW').length,
+  Offers: applications.value.filter((a) => a.currentStage === 'OFFER').length,
+  Closed: applications.value.filter((a) => CLOSED_STAGES.includes(a.currentStage)).length,
+}))
 
-function scoreLevel(v: number): string {
-  return v >= 80 ? 'high' : v >= 60 ? 'mid' : 'low'
+const filters = computed(() => [
+  { name: 'All', n: counts.value.All },
+  { name: 'Active', n: counts.value.Active },
+  { name: 'Interviewing', n: counts.value.Interviewing },
+  { name: 'Offers', n: counts.value.Offers },
+  { name: 'Closed', n: counts.value.Closed },
+])
+
+const visibleApplications = computed(() => {
+  const list = applications.value
+  switch (activeFilter.value) {
+    case 'Active':
+      return list.filter((a) => ACTIVE_STAGES.includes(a.currentStage))
+    case 'Interviewing':
+      return list.filter((a) => a.currentStage === 'INTERVIEW')
+    case 'Offers':
+      return list.filter((a) => a.currentStage === 'OFFER')
+    case 'Closed':
+      return list.filter((a) => CLOSED_STAGES.includes(a.currentStage))
+    default:
+      return list
+  }
+})
+
+const offerApp = computed(() => applications.value.find((a) => a.currentStage === 'OFFER') ?? null)
+
+// ── Derived display helpers ──
+const WORK_MODE: Record<string, string> = { REMOTE: 'Remote', HYBRID: 'Hybrid', ONSITE: 'On-site' }
+function location(a: CandidateApplication): string {
+  const parts = [a.job.location, a.job.jobType ? WORK_MODE[a.job.jobType] ?? a.job.jobType : null]
+  return parts.filter(Boolean).join(' · ')
+}
+
+const CURRENCY: Record<string, string> = { USD: '$', EUR: '€', GBP: '£', PKR: '₨' }
+function money(v: number, cur: string | null): string {
+  const sym = CURRENCY[cur ?? 'USD'] ?? ''
+  return v >= 1000 ? `${sym}${Math.round(v / 1000)}k` : `${sym}${v}`
+}
+function salary(a: CandidateApplication): string {
+  const { salaryMin, salaryMax, salaryCurrency } = a.job
+  if (salaryMin && salaryMax) return `${money(salaryMin, salaryCurrency)} – ${money(salaryMax, salaryCurrency)}`
+  if (salaryMin) return `From ${money(salaryMin, salaryCurrency)}`
+  if (salaryMax) return `Up to ${money(salaryMax, salaryCurrency)}`
+  return ''
+}
+
+function appliedDate(iso: string): string {
+  return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+}
+
+function activityKind(stage: CandidateAppStage): 'offer' | 'positive' | 'neutral' {
+  if (stage === 'OFFER') return 'offer'
+  if (stage === 'SCREENED' || stage === 'INTERVIEW' || stage === 'HIRED') return 'positive'
+  return 'neutral'
+}
+const ACTIVITY_TEXT: Record<CandidateAppStage, string> = {
+  APPLIED: 'Application submitted · under review',
+  SCREENED: 'Passed the AI screen · with the recruiter',
+  INTERVIEW: 'In the interview stage',
+  OFFER: 'Offer extended',
+  HIRED: 'You were hired 🎉',
+  REJECTED: 'Not selected for this role',
+}
+function activityText(stage: CandidateAppStage): string {
+  return ACTIVITY_TEXT[stage]
+}
+
+// Stable per-company gradient when no logo is available.
+const PALETTE = ['#F97316', '#0EA5E9', '#8B5CF6', '#10B981', '#EC4899', '#6366F1', '#F59E0B']
+function logoGradient(name: string): string {
+  let h = 0
+  for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) >>> 0
+  const c = PALETTE[h % PALETTE.length]
+  return `linear-gradient(135deg, ${c}, ${c}cc)`
 }
 </script>
 
@@ -157,7 +277,6 @@ function scoreLevel(v: number): string {
 .cand-content { display: flex; flex-direction: column; gap: 28px; }
 
 .cand-head { display: flex; align-items: flex-end; gap: 16px; }
-.cand-head-actions { margin-left: auto; display: flex; gap: 8px; }
 .cand-title { margin: 0; font-size: 28px; font-weight: 600; letter-spacing: -0.025em; }
 
 .offer-banner {
@@ -196,7 +315,6 @@ function scoreLevel(v: number): string {
   border-radius: 5px;
 }
 .chip-count.active { background: rgba(255, 255, 255, 0.15); color: rgba(255, 255, 255, 0.85); }
-.sort-wrap { margin-left: auto; display: flex; align-items: center; gap: 6px; }
 
 .app-list { display: flex; flex-direction: column; gap: 14px; }
 .app-card { padding: 22px; display: flex; flex-direction: column; gap: 18px; }
@@ -211,7 +329,9 @@ function scoreLevel(v: number): string {
   font-weight: 700;
   font-size: 18px;
   flex-shrink: 0;
+  overflow: hidden;
 }
+.app-logo-img { width: 100%; height: 100%; object-fit: cover; }
 .app-role { font-size: 15px; font-weight: 600; margin-top: 2px; letter-spacing: -0.01em; }
 .app-meta {
   display: flex;
@@ -252,6 +372,15 @@ function scoreLevel(v: number): string {
 .step-line { flex: 1; height: 2px; background: var(--hf-border); position: relative; top: -10px; margin: 0 4px; }
 .step-line.done { background: var(--hf-accent); }
 
+.rejected-bar {
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--hf-danger);
+  background: var(--hf-danger-soft);
+  padding: 8px 12px;
+  border-radius: 8px;
+}
+
 .app-foot {
   display: flex;
   align-items: center;
@@ -271,30 +400,25 @@ function scoreLevel(v: number): string {
 .app-foot-icon.positive { background: var(--hf-accent-soft); color: #047857; }
 .app-foot-icon.offer { background: var(--hf-warn-soft); color: #b45309; }
 
-/* Suggested */
-.suggest-head { display: flex; align-items: center; margin-bottom: 14px; }
-.suggest-title { margin: 0; font-size: 17px; font-weight: 600; letter-spacing: -0.015em; }
-.suggest-link { margin-left: auto; font-size: 12.5px; color: var(--hf-primary); font-weight: 500; cursor: pointer; }
-.suggest-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
-.suggest-card { padding: 18px; display: flex; flex-direction: column; gap: 14px; }
-.suggest-logo {
-  width: 36px;
-  height: 36px;
-  border-radius: 8px;
-  display: grid;
-  place-items: center;
-  color: white;
-  font-weight: 700;
-  font-size: 14px;
-}
-.suggest-role { font-size: 13.5px; font-weight: 600; line-height: 1.2; }
-.suggest-loc { display: flex; gap: 8px; font-size: 11.5px; color: var(--hf-text-muted); }
-.suggest-loc span { display: inline-flex; align-items: center; gap: 4px; }
-.suggest-foot {
+/* State cards (loading / empty / error) */
+.state-card {
+  padding: 44px 24px;
   display: flex;
+  flex-direction: column;
   align-items: center;
-  justify-content: space-between;
-  padding-top: 12px;
-  border-top: 1px solid var(--hf-border);
+  text-align: center;
+}
+.state-title { font-size: 15px; font-weight: 600; margin-bottom: 4px; }
+.skeleton-card { gap: 12px; }
+.sk-line {
+  height: 12px;
+  border-radius: 6px;
+  background: linear-gradient(90deg, #eee 25%, #f5f5f5 37%, #eee 63%);
+  background-size: 400% 100%;
+  animation: sk 1.4s ease infinite;
+}
+@keyframes sk {
+  0% { background-position: 100% 50%; }
+  100% { background-position: 0 50%; }
 }
 </style>

@@ -4,16 +4,27 @@
     <AppBarLogo class="ml-4" />
 
     <nav class="cand-nav ml-8">
-      <v-btn
-        v-for="(n, i) in navTabs"
-        :key="n"
-        class="cand-nav-item"
-        :class="{ active: i === 0 }"
-        variant="text"
-        :ripple="false"
-      >
-        {{ n }}<span v-if="i === 0" class="cand-nav-count">4</span>
-      </v-btn>
+      <template v-for="tab in navTabs" :key="tab.label">
+        <v-btn
+          v-if="tab.to"
+          class="cand-nav-item"
+          :class="{ active: route.name === 'candidate-dashboard' }"
+          variant="text"
+          :ripple="false"
+          :to="tab.to"
+        >
+          {{ tab.label }}
+          <span v-if="applicationCount" class="cand-nav-count">{{ applicationCount }}</span>
+        </v-btn>
+        <!-- Not yet backed by an API — shown for parity with the design, disabled. -->
+        <v-tooltip v-else text="Coming soon" location="bottom">
+          <template #activator="{ props: tip }">
+            <span v-bind="tip" class="cand-nav-item soon">
+              {{ tab.label }}<span class="soon-dot">Soon</span>
+            </span>
+          </template>
+        </v-tooltip>
+      </template>
     </nav>
 
     <v-spacer />
@@ -37,8 +48,10 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
-import { RouterView, useRouter } from 'vue-router'
+import { RouterView, useRouter, useRoute } from 'vue-router'
+import { storeToRefs } from 'pinia'
 import { useCandidateAuthStore } from '@/stores/candidateAuth.store'
+import { useCandidateApplicationsStore } from '@/stores/candidateApplications.store'
 import HfIcon from '@/components/common/HfIcon.vue'
 import AppBarLogo from '@/components/common/AppBarLogo.vue'
 import UserMenu from '@/components/common/UserMenu.vue'
@@ -46,12 +59,21 @@ import UserMenu from '@/components/common/UserMenu.vue'
 /* Candidate app chrome. Sidebar-less, lighter than the recruiter shell, per the
    mockup. Parent route; the dashboard renders through <RouterView/>. */
 const router = useRouter()
+const route = useRoute()
 const candidateAuth = useCandidateAuthStore()
+const { applications } = storeToRefs(useCandidateApplicationsStore())
 
 const firstName = computed(() => (candidateAuth.candidateName || 'there').split(' ')[0])
 const avatarInitial = computed(() => (candidateAuth.candidateName || 'U').charAt(0).toUpperCase())
+const applicationCount = computed(() => applications.value.length)
 
-const navTabs = ['My Applications', 'Browse Jobs', 'Saved', 'Profile']
+// Only "My Applications" is backed by an endpoint; the rest await backend work.
+const navTabs: { label: string; to?: string }[] = [
+  { label: 'My Applications', to: '/candidate/dashboard' },
+  { label: 'Browse Jobs' },
+  { label: 'Saved' },
+  { label: 'Profile' },
+]
 
 function signOut() {
   candidateAuth.signoutCandidate()
@@ -91,6 +113,29 @@ function signOut() {
   font-size: 11px;
   color: var(--hf-text-muted);
   font-family: var(--hf-mono);
+}
+/* Disabled "coming soon" tabs — rendered as plain spans, not v-btn */
+.cand-nav-item.soon {
+  display: inline-flex;
+  align-items: center;
+  height: 34px;
+  padding: 0 12px;
+  border-radius: 7px;
+  font-size: 13.5px;
+  font-weight: 500;
+  color: var(--hf-text-subtle);
+  cursor: default;
+}
+.soon-dot {
+  margin-left: 6px;
+  font-size: 9.5px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--hf-text-subtle);
+  background: var(--hf-bg);
+  padding: 1px 5px;
+  border-radius: 5px;
 }
 :deep(.v-btn__overlay) {
   background: transparent;

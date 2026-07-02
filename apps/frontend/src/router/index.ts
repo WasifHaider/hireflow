@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { useAuthStore } from '@/stores/auth.store'
+import { useCandidateAuthStore } from '@/stores/candidateAuth.store'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -82,16 +83,24 @@ const router = createRouter({
       path: '/candidate/signup',
       name: 'candidate-signup',
       component: () => import('@/views/CandidateSignUp.vue'),
+      meta: { redirectIfCandidateAuthed: true },
     },
     {
       path: '/candidate/signin',
       name: 'candidate-signin',
       component: () => import('@/views/CandidateSignIn.vue'),
+      meta: { redirectIfCandidateAuthed: true },
+    },
+    {
+      path: '/verify-candidate',
+      name: 'verify-candidate',
+      component: () => import('@/views/CandidateVerify.vue'),
     },
     // ── Candidate app shell ──────────────────────────────────────────────────
     {
       path: '',
       component: () => import('@/layouts/CandidateLayout.vue'),
+      meta: { requiresCandidateAuth: true },
       children: [
         {
           path: '/candidate/dashboard',
@@ -99,6 +108,13 @@ const router = createRouter({
           component: () => import('@/views/CandidateDashboard.vue'),
         },
       ],
+    },
+    // ── Public careers / apply (anonymous) ───────────────────────────────────
+    {
+      path: '/careers/:companySlug/:jobId',
+      name: 'public-job',
+      component: () => import('@/views/PublicJob.vue'),
+      props: true,
     },
     {
       path: '/auth/callback',
@@ -116,19 +132,32 @@ const router = createRouter({
 
 router.beforeEach(async (to) => {
   const authStore = useAuthStore()
+  const candidateAuth = useCandidateAuthStore()
 
   // Block all navigation until the stored token (if any) has been validated
   // against the backend. Subsequent calls to hydrate() are no-ops.
   if (!authStore.isHydrated) {
     await authStore.hydrate()
   }
+  // Candidate hydrate is synchronous (localStorage only — no /me endpoint).
+  if (!candidateAuth.isHydrated) {
+    candidateAuth.hydrate()
+  }
 
+  // ── Recruiter session ──
   if (to.meta.requiresAuth && !authStore.isAuthenticated) {
     return { name: 'signin' }
   }
-
   if (to.meta.redirectIfAuthed && authStore.isAuthenticated) {
     return { name: 'dashboard' }
+  }
+
+  // ── Candidate session ──
+  if (to.meta.requiresCandidateAuth && !candidateAuth.isAuthenticated) {
+    return { name: 'candidate-signin' }
+  }
+  if (to.meta.redirectIfCandidateAuthed && candidateAuth.isAuthenticated) {
+    return { name: 'candidate-dashboard' }
   }
 })
 
