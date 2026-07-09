@@ -36,7 +36,13 @@ async function bootstrap() {
   app.use('/api/queues', serverAdapter.getRouter());
 
   app.enableCors({
-    origin: 'http://localhost:9173',
+    origin: [
+      'http://localhost:9173',
+      'http://localhost:5173',
+      'http://hireflow-xi-liart.vercel.app',
+      'https://hireflow-xi-liart.vercel.app',
+      'https://championships-dsl-eclipse-different.trycloudflare.com',
+    ],
     credentials: true,
   });
 
