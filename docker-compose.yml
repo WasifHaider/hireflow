@@ -1,0 +1,66 @@
+services:
+
+  # ── Redis ────────────────────────────────────────────────────────────────
+  # Only used locally. In production you'll point to Upstash via REDIS_URL env var.
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ── Backend (NestJS) ─────────────────────────────────────────────────────
+  backend:
+    build:
+      context: ./apps/backend
+      dockerfile: Dockerfile
+    ports:
+      - "3200:3200"
+    env_file:
+      - ./apps/backend/.env
+    environment:
+      # Override Redis URL to point to the local redis container
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      # Inside the docker network the ml-service is reached by service name,
+      # NOT localhost (localhost = the backend container itself).
+      ML_SERVICE_URL: http://ml-service:8000
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # ── ML Service (FastAPI) ─────────────────────────────────────────────────
+  ml-service:
+    build:
+      context: ./apps/ml-service
+      dockerfile: Dockerfile
+    ports:
+      - "8100:8000"
+    env_file:
+      - ./apps/ml-service/.env
+    restart: unless-stopped
+
+  # ── Frontend (Vue 3) ─────────────────────────────────────────────────────
+  frontend:
+    build:
+      context: ./apps/frontend
+      dockerfile: Dockerfile
+      args:
+        # Vite bakes this URL into the JS bundle at build time.
+        # Must be the HOST-visible backend port — the browser (not the
+        # container) makes these calls, so it resolves against localhost.
+        VITE_API_URL: http://localhost:3200
+    ports:
+      - "9173:80"
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+volumes:
+  redis_data:

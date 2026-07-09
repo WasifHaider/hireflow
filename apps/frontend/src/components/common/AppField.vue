@@ -5,16 +5,18 @@
       <slot name="label-action" />
     </div>
 
-    <!-- Autocomplete -->
+    <!-- Autocomplete: multiple → Vuetify types modelValue as an array, so bind
+         the shared unknown model explicitly rather than via v-model. -->
     <v-autocomplete
       v-if="type === 'autocomplete'"
-      v-model="model"
+      :model-value="model as unknown[] | undefined"
       variant="outlined"
       :items="items"
       :placeholder="placeholder"
       :disabled="disabled"
       multiple
       :menu-props="menuProps"
+      @update:model-value="model = $event"
       @blur="emit('blur')"
     />
 

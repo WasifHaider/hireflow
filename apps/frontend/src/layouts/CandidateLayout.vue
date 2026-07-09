@@ -8,13 +8,13 @@
         <v-btn
           v-if="tab.to"
           class="cand-nav-item"
-          :class="{ active: route.name === 'candidate-dashboard' }"
+          :class="{ active: isActive(tab) }"
           variant="text"
           :ripple="false"
           :to="tab.to"
         >
           {{ tab.label }}
-          <span v-if="applicationCount" class="cand-nav-count">{{ applicationCount }}</span>
+          <span v-if="tab.badge && applicationCount" class="cand-nav-count">{{ applicationCount }}</span>
         </v-btn>
         <!-- Not yet backed by an API — shown for parity with the design, disabled. -->
         <v-tooltip v-else text="Coming soon" location="bottom">
@@ -67,13 +67,24 @@ const firstName = computed(() => (candidateAuth.candidateName || 'there').split(
 const avatarInitial = computed(() => (candidateAuth.candidateName || 'U').charAt(0).toUpperCase())
 const applicationCount = computed(() => applications.value.length)
 
-// Only "My Applications" is backed by an endpoint; the rest await backend work.
-const navTabs: { label: string; to?: string }[] = [
-  { label: 'My Applications', to: '/candidate/dashboard' },
-  { label: 'Browse Jobs' },
+// "Saved" awaits a backend table; the rest are wired. `activeNames` lets a tab
+// stay highlighted on its detail sub-routes (e.g. Browse Jobs → job detail).
+interface NavTab {
+  label: string
+  to?: string
+  badge?: boolean
+  activeNames?: string[]
+}
+const navTabs: NavTab[] = [
+  { label: 'My Applications', to: '/candidate/dashboard', badge: true, activeNames: ['candidate-dashboard'] },
+  { label: 'Browse Jobs', to: '/candidate/jobs', activeNames: ['candidate-jobs', 'candidate-job-detail'] },
   { label: 'Saved' },
-  { label: 'Profile' },
+  { label: 'Profile', to: '/candidate/profile', activeNames: ['candidate-profile'] },
 ]
+
+function isActive(tab: NavTab): boolean {
+  return !!tab.activeNames?.includes(route.name as string)
+}
 
 function signOut() {
   candidateAuth.signoutCandidate()

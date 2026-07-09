@@ -7,6 +7,7 @@ import {
   Param,
   ParseUUIDPipe,
   Post,
+  Query,
   UploadedFile,
   UseInterceptors,
 } from '@nestjs/common';
@@ -24,6 +25,8 @@ import { PublicCompanyResponseDto } from './dto/public-company-response.dto';
 import { PublicJobResponseDto } from './dto/public-job-response.dto';
 import { SubmitApplicationDto } from './dto/submit-application.dto';
 import { SubmitApplicationResponseDto } from './dto/submit-application-response.dto';
+import { ListPublicJobsQueryDto } from './dto/list-public-jobs-query.dto';
+import { PublicJobListResponseDto } from './dto/public-job-list-response.dto';
 import { CompanySlugPipe } from './pipes/company-slug.pipe';
 import { PublicService } from './public.service';
 
@@ -46,6 +49,23 @@ export class PublicController {
     @Param('companySlug', CompanySlugPipe) companySlug: string,
   ): Promise<PublicCompanyResponseDto> {
     return this.publicService.getCompanyBySlug(companySlug);
+  }
+
+  @Get('jobs')
+  @Throttle({ default: { limit: 30, ttl: 60000 } })
+  @ApiOperation({
+    summary: 'Browse published jobs across all companies (global board)',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Paginated published jobs',
+    type: PublicJobListResponseDto,
+  })
+  @ApiResponse({ status: 429, description: 'Too many requests' })
+  listJobs(
+    @Query() query: ListPublicJobsQueryDto,
+  ): Promise<PublicJobListResponseDto> {
+    return this.publicService.listPublicJobs(query);
   }
 
   @Get('jobs/:companySlug/:jobId')

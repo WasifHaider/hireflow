@@ -1,17 +1,10 @@
-import {
-  ConflictException,
-  Injectable,
-  Logger,
-  NotFoundException,
-} from '@nestjs/common';
-import {
-  ApplicationStage,
-  JobStatus,
-  Prisma,
-} from '@prisma/client';
-import { ApplicationScoringProducer } from '../queues/application-scoring/application-scoring.producer';
+import { Injectable, NotFoundException } from '@nestjs/common';
+import { JobStatus } from '@prisma/client';
+import { Prisma } from '@prisma/client';
+import { ApplicationSubmissionService } from '../applications/application-submission.service';
 import { PrismaService } from '../prisma/prisma.service';
-import { StorageService } from '../storage/storage.service';
+import { ListPublicJobsQueryDto } from './dto/list-public-jobs-query.dto';
+import { PublicJobListResponseDto } from './dto/public-job-list-response.dto';
 import { PublicCompanyResponseDto } from './dto/public-company-response.dto';
 import { PublicJobResponseDto } from './dto/public-job-response.dto';
 import { SubmitApplicationDto } from './dto/submit-application.dto';
@@ -51,14 +44,28 @@ const publicJobSelect = {
   },
 } as const;
 
+// Lighter select for the global board list — no description/requirements
+// (those load on the detail page), keeps the payload small.
+const publicJobListSelect = {
+  id: true,
+  title: true,
+  location: true,
+  jobType: true,
+  employmentType: true,
+  salaryMin: true,
+  salaryMax: true,
+  salaryCurrency: true,
+  publishedAt: true,
+  company: {
+    select: publicCompanyBasicSelect,
+  },
+} as const;
+
 @Injectable()
 export class PublicService {
-  private readonly logger = new Logger(PublicService.name);
-
   constructor(
     private readonly prisma: PrismaService,
-    private readonly storageService: StorageService,
-    private readonly scoringProducer: ApplicationScoringProducer,
+    private readonly submissionService: ApplicationSubmissionService,
   ) {}
 
   async getCompanyBySlug(slug: string): Promise<PublicCompanyResponseDto> {
@@ -72,6 +79,46 @@ export class PublicService {
     }
 
     return company;
+  }
+
+  async listPublicJobs(
+    query: ListPublicJobsQueryDto,
+  ): Promise<PublicJobListResponseDto> {
+    const where: Prisma.JobWhereInput = {
+      status: JobStatus.PUBLISHED,
+      deletedAt: null,
+    };
+
+    if (query.q) {
+      where.OR = [
+        { title: { contains: query.q, mode: 'insensitive' } },
+        { location: { contains: query.q, mode: 'insensitive' } },
+      ];
+    }
+    if (query.location) where.location = query.location;
+    if (query.jobType) where.jobType = query.jobType;
+    if (query.employmentType) where.employmentType = query.employmentType;
+
+    const skip = (query.page - 1) * query.pageSize;
+
+    const [items, total] = await this.prisma.$transaction([
+      this.prisma.job.findMany({
+        where,
+        orderBy: { publishedAt: 'desc' },
+        skip,
+        take: query.pageSize,
+        select: publicJobListSelect,
+      }),
+      this.prisma.job.count({ where }),
+    ]);
+
+    return {
+      items,
+      total,
+      page: query.page,
+      pageSize: query.pageSize,
+      totalPages: total === 0 ? 0 : Math.ceil(total / query.pageSize),
+    };
   }
 
   async getPublicJob(
@@ -129,60 +176,17 @@ export class PublicService {
       },
     });
 
-    const { path, size } = await this.storageService.uploadResume({
-      companyId: job.companyId,
-      jobId: job.id,
+    const { applicationId } = await this.submissionService.create({
+      job,
       candidateId: candidate.id,
-      fileBuffer: resume.buffer,
-      originalFilename: resume.originalname,
-      mimeType: resume.mimetype,
+      coverLetter: dto.coverLetter,
+      resume,
     });
 
-    try {
-      const application = await this.prisma.application.create({
-        data: {
-          jobId: job.id,
-          candidateId: candidate.id,
-          companyId: job.companyId,
-          coverLetter: dto.coverLetter,
-          resumeUrl: path,
-          resumeFilename: resume.originalname,
-          resumeMimeType: resume.mimetype,
-          resumeSizeBytes: size,
-          currentStage: ApplicationStage.APPLIED,
-        },
-      });
-
-      try {
-        await this.scoringProducer.enqueueScoreApplication({
-          applicationId: application.id,
-          jobId: job.id,
-          candidateId: candidate.id,
-          resumeStoragePath: path,
-        });
-      } catch (enqueueError) {
-        this.logger.error(
-          `Failed to enqueue scoring for application ${application.id}`,
-          enqueueError instanceof Error ? enqueueError.stack : enqueueError,
-        );
-      }
-
-      return {
-        applicationId: application.id,
-        status: 'submitted',
-        message: 'Your application has been submitted successfully.',
-      };
-    } catch (error) {
-      await this.storageService.deleteResume(path);
-
-      if (
-        error instanceof Prisma.PrismaClientKnownRequestError &&
-        error.code === 'P2002'
-      ) {
-        throw new ConflictException('You have already applied to this job');
-      }
-
-      throw error;
-    }
+    return {
+      applicationId,
+      status: 'submitted',
+      message: 'Your application has been submitted successfully.',
+    };
   }
 }

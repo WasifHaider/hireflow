@@ -107,6 +107,22 @@ const router = createRouter({
           name: 'candidate-dashboard',
           component: () => import('@/views/CandidateDashboard.vue'),
         },
+        {
+          path: '/candidate/jobs',
+          name: 'candidate-jobs',
+          component: () => import('@/views/BrowseJobs.vue'),
+        },
+        {
+          path: '/candidate/jobs/:companySlug/:jobId',
+          name: 'candidate-job-detail',
+          component: () => import('@/views/JobDetail.vue'),
+          props: true,
+        },
+        {
+          path: '/candidate/profile',
+          name: 'candidate-profile',
+          component: () => import('@/views/CandidateProfile.vue'),
+        },
       ],
     },
     // ── Public careers / apply (anonymous) ───────────────────────────────────
