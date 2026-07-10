@@ -42,6 +42,7 @@ async function bootstrap() {
       'http://hireflow-xi-liart.vercel.app',
       'https://hireflow-xi-liart.vercel.app',
       'https://championships-dsl-eclipse-different.trycloudflare.com',
+      'https://api.whapps.site',
     ],
     credentials: true,
   });
