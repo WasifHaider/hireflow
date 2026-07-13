@@ -52,6 +52,7 @@ jobs:
           host: ${{ secrets.EC2_HOST }}
           username: ${{ secrets.EC2_USERNAME }}
           key: ${{ secrets.EC2_SSH_KEY }}
+          port: 22
           script: |
             aws ecr get-login-password --region ap-south-1 | docker login --username AWS --password-stdin 487916111463.dkr.ecr.ap-south-1.amazonaws.com
             cd hireflow
