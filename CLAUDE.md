@@ -74,9 +74,11 @@ This is a portfolio project for Wasif Haider (job hunt → Systems Limited and g
 ## Where I'm at
 
 - Sub-phase E code complete; ml-service standalone verified live. Full backend→queue e2e DEFERRED by user decision (each run burns OpenAI credits) — will run once during final integration pass when whole app is ready, not now. Recruiter dashboard + jobs list + candidates list/detail now wired to real endpoints (see bullets above) — done on branch feat/recruiter-dashboard-integration (NOT committed/merged — user handles git). Pipeline (`/pipeline`) now wired to real endpoints (see bullet above). Candidate side now full: dashboard/my-apps, Browse Jobs, Job Detail+apply, Profile, verify, public job (see candidate bullet). NEXT: run manual e2e click-throughs (jobs-list + candidates list/detail + **pipeline drag** + **candidate browse→apply→profile** — logged-in candidate); then remaining recruiter screens (inbox, analytics, settings) + candidate Saved (needs SavedJob table) still to build. Also pending: project-wide Vuetify component-consistency audit (separate pass, user-requested).
-- ml-service: has its own apps/ml-service/.env with OPENAI_API_KEY (gitignored). Windows venv at apps/ml-service/venv (Scripts/*.exe) — run uvicorn on port 8100 from Windows. WSL system python is 3.12; the repo venv won't run under WSL.
-- Mail: RESEND_API_KEY now set in apps/backend/.env (live Resend mode); EMAIL_FROM=onboarding@resend.dev, EMAIL_FROM_NAME=HireFlow, APP_URL=http://localhost:5173
-- Open follow-ups deferred to later phases (NOT yet built): "resend verification email" endpoint, password reset. (frontend /verify-candidate route NOW BUILT — see candidate-side bullet.) Note: re-signup with an unverified email regenerates the token (acts as implicit resend).
+- ml-service: has its own apps/ml-service/.env with GROQ_API_KEY (gitignored). Windows venv at apps/ml-service/venv (Scripts/*.exe) — run uvicorn on port 8100 from Windows. WSL system python is 3.12; the repo venv won't run under WSL.
+- Candidate email verification REMOVED entirely (2026-09-05, product decision). Candidate signup now activates the account and signs in immediately (same response shape as signin) — no verification email sent, no token/expiry used going forward (DB columns left in place unused, no destructive migration). `src/mail/` (MailService, Resend client, verification email template) deleted entirely — nothing else called it; `resend` npm dep removed; `RESEND_API_KEY`/`EMAIL_FROM`/`EMAIL_FROM_NAME`/`APP_URL` env vars removed (all dead). Frontend: `/verify-candidate` route + `CandidateVerify.vue` removed; signup goes straight to `/candidate/dashboard`; signin's 403-unverified handling removed. The old "resend verification email" follow-up item is now moot.
+- ML_SERVICE_URL local-dev fix (2026-09-05): backend `.env` now correctly reads `http://localhost:8100` for non-Docker local dev (was pointing at the Docker-only hostname `ml-service`, which only resolves inside docker-compose's network — docker-compose's own environment override was already correct and is untouched).
+- Frontend deploy fix (2026-09-05): added `apps/frontend/vercel.json` SPA rewrite (`/(.*) → /index.html`) — direct navigation to any non-root route (e.g. `/signin`, `/dashboard`) was 404ing on Vercel because no rewrite config existed; root `/` always worked fine.
+- Workspace-URL fake "Available" pill fix (2026-09-05): Welcome.vue's Available/Taken pill was static markup, always showing green regardless of the real slug. Now backed by a real debounced (400ms) live check against new `GET /auth/company/slug-available` (RecruiterAuthGuard, excludes the requesting company's own current slug so keeping it never shows "Taken").
 
 ## Upcoming phases
 
@@ -119,8 +121,7 @@ This is a portfolio project for Wasif Haider (job hunt → Systems Limited and g
 ## Files of particular importance
 
 - `apps/backend/src/auth/` — JWT strategy (userType branch), recruiter + candidate guards, recruiter auth
-- `apps/backend/src/auth/candidate/` — candidate auth (signup/verify/signin), defense-2 reconciliation
-- `apps/backend/src/mail/` — MailService (Resend + console fallback), verification email template
+- `apps/backend/src/auth/candidate/` — candidate auth (signup/signin, immediate activation — no email verification)
 - `apps/backend/src/candidate/` — candidate dashboard (GET /candidate/me/applications)
 - `apps/backend/src/jobs/` — tenant-scoped Jobs CRUD reference pattern
 - `apps/backend/src/public/public.service.ts` — submitApplication, the most complex service method (upsert candidate → upload → create application → enqueue scoring with compensating rollback)
