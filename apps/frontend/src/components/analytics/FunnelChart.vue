@@ -1,5 +1,5 @@
 <template>
-  <div class="funnel">
+  <div v-if="stages.length" class="funnel">
     <div v-for="(s, i) in stages" :key="s.name" class="funnel-row">
       <div class="funnel-label">{{ s.name }}</div>
       <div class="funnel-track">
@@ -21,25 +21,49 @@
       <div class="funnel-from">{{ i === 0 ? 'All sources' : `from ${stages[i - 1]?.name}` }}</div>
     </div>
   </div>
+  <div v-else class="hf-muted" style="padding: 24px; text-align: center; font-size: 13px">
+    No applications yet.
+  </div>
 </template>
 
 <script setup lang="ts">
-interface FunnelStage {
-  name: string
-  count: number
-  pct: number
-  drop: number | null
-  color: string
-}
+import { computed } from 'vue'
+import type { FunnelStage } from '@/types/analytics'
 
-// MOCK — funnel volumes from the design mockup; wired to analytics API later.
-const stages: FunnelStage[] = [
-  { name: 'Applied', count: 1247, pct: 100, drop: null, color: '#94A3B8' },
-  { name: 'Screened', count: 612, pct: 49, drop: -51, color: '#60A5FA' },
-  { name: 'Interview', count: 218, pct: 17, drop: -64, color: '#A78BFA' },
-  { name: 'Offer', count: 42, pct: 3.4, drop: -81, color: '#F59E0B' },
-  { name: 'Hired', count: 28, pct: 2.2, drop: -33, color: '#10B981' },
-]
+const props = defineProps<{ funnel: FunnelStage[] }>()
+
+const STAGE_LABELS: Record<string, string> = {
+  APPLIED: 'Applied',
+  SCREENED: 'Screened',
+  INTERVIEW: 'Interview',
+  OFFER: 'Offer',
+  HIRED: 'Hired',
+  REJECTED: 'Rejected',
+}
+const STAGE_COLORS: Record<string, string> = {
+  APPLIED: '#94A3B8',
+  SCREENED: '#60A5FA',
+  INTERVIEW: '#A78BFA',
+  OFFER: '#F59E0B',
+  HIRED: '#10B981',
+  REJECTED: '#EF4444',
+}
+// The funnel only makes sense for the forward pipeline — REJECTED is shown
+// elsewhere (pipeline board), not as a funnel stage here.
+const FUNNEL_ORDER = ['APPLIED', 'SCREENED', 'INTERVIEW', 'OFFER', 'HIRED']
+
+const stages = computed(() => {
+  const base = props.funnel.filter((f) => FUNNEL_ORDER.includes(f.stage))
+  const total = base.find((f) => f.stage === 'APPLIED')?.count ?? 0
+  if (total === 0) return []
+  return FUNNEL_ORDER.map((stage, i) => {
+    const count = base.find((f) => f.stage === stage)?.count ?? 0
+    const prevCount = i === 0 ? total : (base.find((f) => f.stage === FUNNEL_ORDER[i - 1])?.count ?? 0)
+    const pct = Math.round((count / total) * 1000) / 10
+    const drop = i === 0 || prevCount === 0 ? null : Math.round(((count - prevCount) / prevCount) * 100)
+    return { name: STAGE_LABELS[stage] ?? stage, count, pct, drop, color: STAGE_COLORS[stage] ?? '#94A3B8' }
+  })
+})
 
 // Floor the bar width so tiny stages stay readable (matches mockup's Math.max(pct, 8)).
 function barWidth(pct: number): number {

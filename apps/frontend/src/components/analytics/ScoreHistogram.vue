@@ -33,24 +33,31 @@
 </template>
 
 <script setup lang="ts">
-// MOCK — AI score distribution bins from the design mockup.
-const bins = [
-  { range: '0-9', n: 3 }, { range: '10-19', n: 8 }, { range: '20-29', n: 14 },
-  { range: '30-39', n: 28 }, { range: '40-49', n: 62 }, { range: '50-59', n: 118 },
-  { range: '60-69', n: 184 }, { range: '70-79', n: 286 }, { range: '80-89', n: 312 },
-  { range: '90-100', n: 232 },
-]
+import { computed } from 'vue'
+import type { ScoreHistogramBin } from '@/types/analytics'
+
+const props = defineProps<{ bins: ScoreHistogramBin[] }>()
+
+const bins = computed(() => props.bins.map((b) => ({ range: b.range, n: b.count })))
 
 const W = 540
 const H = 200
 const P = { l: 24, r: 12, t: 12, b: 28 }
-const ticks = [0, 100, 200, 300]
-const max = Math.max(...bins.map((b) => b.n))
-const bw = (W - P.l - P.r) / bins.length
+// Round the top gridline up to the next 100 so real (usually much smaller
+// than the old mock's 300) counts don't get squashed into a sliver.
+const max = computed(() => {
+  const peak = Math.max(1, ...bins.value.map((b) => b.n))
+  return Math.ceil(peak / 100) * 100 || 100
+})
+const ticks = computed(() => {
+  const step = max.value / 3
+  return [0, Math.round(step), Math.round(step * 2), max.value]
+})
+const bw = (W - P.l - P.r) / 10 // always 10 buckets
 
-const yOf = (t: number) => P.t + (H - P.t - P.b) * (1 - t / max)
+const yOf = (t: number) => P.t + (H - P.t - P.b) * (1 - t / max.value)
 const barX = (i: number) => P.l + i * bw + 3
-const barH = (n: number) => (H - P.t - P.b) * (n / max)
+const barH = (n: number) => (H - P.t - P.b) * (n / max.value)
 
 function binColor(range: string): string {
   const lo = parseInt(range)
