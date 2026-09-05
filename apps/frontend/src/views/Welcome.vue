@@ -7,7 +7,7 @@
         <span>HireFlow</span>
       </div>
       <div class="topbar-right">
-        <span class="signed-in">Signed in as {{ userEmail || 'jamie@acme.com' }}</span>
+        <span class="signed-in">Signed in as {{ userEmail }}</span>
         <AppButton variant="ghost" @click="handleSignOut">Sign out</AppButton>
       </div>
     </header>
@@ -51,15 +51,21 @@
           <div class="grid-2">
             <AppField v-model="companyName" label="Company name" />
 
-            <!-- Workspace URL — custom composite (prefix box + Available pill) -->
+            <!-- Workspace URL — custom composite (prefix box + live availability) -->
             <div class="field">
               <label class="field-label">Workspace URL</label>
               <div class="url-field">
                 <span class="url-prefix">hireflow.app /</span>
                 <input v-model="workspaceSlug" class="url-input" />
-                <span class="url-available">
-                  <span class="url-check">
+                <span
+                  v-if="slugCheckState !== 'idle'"
+                  class="url-available"
+                  :class="{ taken: slugCheckState === 'taken' }"
+                >
+                  <span v-if="slugCheckState === 'checking'" class="url-check checking">…</span>
+                  <span v-else class="url-check">
                     <svg
+                      v-if="slugCheckState === 'available'"
                       width="11"
                       height="11"
                       viewBox="0 0 24 24"
@@ -71,12 +77,28 @@
                     >
                       <path d="m5 12 5 5L20 7" />
                     </svg>
+                    <svg
+                      v-else
+                      width="11"
+                      height="11"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="3"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                    >
+                      <line x1="18" y1="6" x2="6" y2="18" />
+                      <line x1="6" y1="6" x2="18" y2="18" />
+                    </svg>
                   </span>
-                  Available
+                  {{ slugCheckState === 'checking' ? 'Checking…' : slugCheckState === 'available' ? 'Available' : 'Taken' }}
                 </span>
               </div>
             </div>
           </div>
+
+          <p v-if="workspaceSaveError" class="workspace-save-error">{{ workspaceSaveError }}</p>
 
           <!-- Logo upload row -->
           <div class="logo-row">
@@ -116,24 +138,52 @@
             <AppField v-model="salary" label="Salary range" placeholder="$180k – $230k" />
           </div>
 
-          <!-- AI hint -->
+          <!-- AI hint / draft trigger -->
           <div class="ai-hint">
             <v-icon color="#4F46E5" size="20">mdi-star-four-points</v-icon>
             <span class="ai-hint-text">
               Skip the writing. We'll generate the description, requirements, and scoring rubric
               from your title in ~15 seconds.
             </span>
+            <AppButton
+              v-if="!manualMode"
+              variant="ghost"
+              :loading="generating"
+              :disabled="!jobTitle.trim()"
+              @click="handleGenerate"
+            >
+              <v-icon size="14">mdi-star-four-points</v-icon>
+              Generate
+            </AppButton>
             <AppButton variant="ghost" @click="writeOwn">
               <v-icon size="14">mdi-pencil</v-icon>
-              Write my own
+              {{ manualMode ? 'Use AI draft instead' : 'Write my own' }}
             </AppButton>
+          </div>
+
+          <p v-if="generateError" class="workspace-save-error">{{ generateError }}</p>
+
+          <!-- Generated / manual draft -->
+          <div v-if="manualMode || description" class="draft-block">
+            <AppField
+              v-model="description"
+              label="Description"
+              placeholder="We are looking for..."
+              :disabled="!manualMode && generating"
+            />
+            <AppField
+              v-model="requirements"
+              label="Requirements"
+              placeholder="- 5+ years experience..."
+              :disabled="!manualMode && generating"
+            />
           </div>
         </section>
 
         <!-- Footer actions -->
         <div class="d-flex align-center justify-space-between">
           <a class="skip-link" @click="skipToDashboard">Skip for now — take me to the dashboard</a>
-          <AppButton variant="primary" @click="publishJob">
+          <AppButton variant="primary" :loading="savingWorkspace" @click="publishJob">
             <v-icon size="16">mdi-star-four-points</v-icon>
             Publish job &amp; start screening
             <v-icon size="16">mdi-arrow-right</v-icon>
@@ -154,22 +204,68 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, watch, onBeforeUnmount } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth.store'
+import { useJobsStore } from '@/stores/jobs.store'
+import { useToastStore } from '@/stores/toast.store'
+import { getApiErrorMessage } from '@/plugins/axios'
 import AppField from '@/components/common/AppField.vue'
 import AppButton from '@/components/common/AppButton.vue'
+import type { JobType } from '@/types/job'
 
 const router = useRouter()
 const authStore = useAuthStore()
+const jobsStore = useJobsStore()
+const toastStore = useToastStore()
 
 const userEmail = computed(() => authStore.user?.email ?? '')
-const logoInitial = computed(() => (authStore.companyName || 'Acme Inc.').charAt(0).toUpperCase())
+const logoInitial = computed(() => (authStore.companyName || 'Your Company').charAt(0).toUpperCase())
 
 // ── Step 1: workspace ──────────────────────────────────────────────────────────
 // Prefilled from the just-created account; editable here, persisted later in Settings.
-const companyName = ref(authStore.companyName || 'Acme Inc.')
-const workspaceSlug = ref('acme')
+const companyName = ref(authStore.companyName || 'Your Company')
+const workspaceSlug = ref(authStore.company?.slug || '')
+const originalSlug = authStore.company?.slug || ''
+
+// Live workspace-URL availability check, debounced. 'idle' = unchanged from
+// the current value or empty (no check needed / nothing to show).
+type SlugCheckState = 'idle' | 'checking' | 'available' | 'taken'
+const slugCheckState = ref<SlugCheckState>('idle')
+const SLUG_PATTERN = /^[a-z0-9-]{2,50}$/
+let slugCheckTimer: ReturnType<typeof setTimeout> | undefined
+let slugCheckToken = 0
+
+watch(workspaceSlug, (value) => {
+  const trimmed = value.trim()
+  if (slugCheckTimer) clearTimeout(slugCheckTimer)
+
+  if (!trimmed || trimmed === originalSlug) {
+    slugCheckState.value = 'idle'
+    return
+  }
+  if (!SLUG_PATTERN.test(trimmed)) {
+    slugCheckState.value = 'taken' // reuse the "taken"/red state to flag invalid format too
+    return
+  }
+
+  slugCheckState.value = 'checking'
+  const myToken = ++slugCheckToken
+  slugCheckTimer = setTimeout(async () => {
+    try {
+      const available = await authStore.checkSlugAvailable(trimmed)
+      if (myToken !== slugCheckToken) return // stale response — a newer keystroke superseded it
+      slugCheckState.value = available ? 'available' : 'taken'
+    } catch {
+      if (myToken !== slugCheckToken) return
+      slugCheckState.value = 'idle' // network hiccup — don't block typing on a false negative
+    }
+  }, 400)
+})
+
+onBeforeUnmount(() => {
+  if (slugCheckTimer) clearTimeout(slugCheckTimer)
+})
 
 // ── Step 2: first job ──────────────────────────────────────────────────────────
 const jobTitle = ref('')
@@ -177,6 +273,18 @@ const department = ref('Engineering')
 const location = ref('')
 const workModel = ref('Hybrid')
 const salary = ref('')
+const description = ref('')
+const requirements = ref('')
+const mustHaveSkills = ref<string[]>([])
+const manualMode = ref(false)
+const generating = ref(false)
+const generateError = ref('')
+
+const WORK_MODEL_TO_JOB_TYPE: Record<string, JobType> = {
+  'On-site': 'ONSITE',
+  Hybrid: 'HYBRID',
+  Remote: 'REMOTE',
+}
 
 const departments = [
   'Engineering',
@@ -208,23 +316,122 @@ const features = [
   },
 ]
 
-// ── Actions (backend wiring is intentionally left to the user) ──────────────────
+// ── Actions ──────────────────────────────────────────────────────────────────
+const savingWorkspace = ref(false)
+const workspaceSaveError = ref('')
+
+// Only PATCH if the recruiter actually edited something from the hydrated
+// values — avoids a needless write (and a possible spurious 409) on every
+// "Skip"/"Publish" click when nothing changed.
+async function saveWorkspaceIfChanged() {
+  const nameChanged = companyName.value.trim() !== (authStore.companyName || '')
+  const slugChanged = workspaceSlug.value.trim() !== (authStore.company?.slug || '')
+  if (!nameChanged && !slugChanged) return
+
+  savingWorkspace.value = true
+  workspaceSaveError.value = ''
+  try {
+    await authStore.updateCompany({
+      companyName: nameChanged ? companyName.value.trim() : undefined,
+      slug: slugChanged ? workspaceSlug.value.trim() : undefined,
+    })
+  } catch {
+    // Non-blocking: workspace basics are a nice-to-have on this screen: don't
+    // trap the recruiter here if the save fails (e.g. slug taken). They can
+    // fix it later in Settings.
+    workspaceSaveError.value = 'Could not save workspace changes — you can update this later in Settings.'
+  } finally {
+    savingWorkspace.value = false
+  }
+}
+
 async function handleSignOut() {
   await authStore.signout()
   router.push('/signin')
 }
-function skipToDashboard() {
+async function skipToDashboard() {
+  await saveWorkspaceIfChanged()
   router.push('/dashboard')
 }
-function publishJob() {
-  // TODO(user): POST the job, then route to the new pipeline. Placeholder for now.
+
+async function handleGenerate() {
+  if (!jobTitle.value.trim()) return
+  generating.value = true
+  generateError.value = ''
+  try {
+    const draft = await jobsStore.generateJobDescription({
+      title: jobTitle.value.trim(),
+      department: department.value || undefined,
+      location: location.value.trim() || undefined,
+    })
+    description.value = draft.description
+    requirements.value = draft.requirements
+    mustHaveSkills.value = draft.mustHaveSkills
+  } catch (e) {
+    generateError.value = getApiErrorMessage(e, 'Could not generate a draft. Try again or write your own.')
+  } finally {
+    generating.value = false
+  }
+}
+
+function writeOwn() {
+  manualMode.value = !manualMode.value
+  generateError.value = ''
+}
+
+// Parses "$180k – $230k" / "180000-230000" style input into a [min, max] pair.
+// Best-effort: this is a free-text field in the design, not a structured range
+// picker, so unparseable input just yields undefined bounds (job still posts).
+function parseSalary(raw: string): { min?: number; max?: number } {
+  const numbers = raw
+    .match(/[\d.]+k?/gi)
+    ?.map((token) => {
+      const isK = /k$/i.test(token)
+      const n = parseFloat(token.replace(/k$/i, ''))
+      return isK ? n * 1000 : n
+    })
+    .filter((n) => !Number.isNaN(n))
+  if (!numbers || numbers.length === 0) return {}
+  if (numbers.length === 1) return { min: numbers[0] }
+  return { min: Math.min(...numbers), max: Math.max(...numbers) }
+}
+
+async function publishJob() {
+  await saveWorkspaceIfChanged()
+
+  if (!jobTitle.value.trim() || !location.value.trim() || !description.value.trim() || !requirements.value.trim()) {
+    // Fields required by the backend aren't filled in — treat as skip rather
+    // than blocking the recruiter on this optional onboarding step.
+    router.push('/dashboard')
+    return
+  }
+
+  const { min: salaryMin, max: salaryMax } = parseSalary(salary.value)
+
+  try {
+    await jobsStore.createJob({
+      title: jobTitle.value.trim(),
+      description: description.value.trim(),
+      requirements: requirements.value.trim(),
+      department: department.value || undefined,
+      location: location.value.trim(),
+      jobType: WORK_MODEL_TO_JOB_TYPE[workModel.value] ?? 'HYBRID',
+      employmentType: 'FULL_TIME',
+      salaryMin,
+      salaryMax,
+      mustHaveSkills: mustHaveSkills.value,
+      status: 'PUBLISHED',
+    })
+    toastStore.show(`"${jobTitle.value.trim()}" was published — AI screening starts as applications come in.`)
+  } catch {
+    // Non-blocking, matches saveWorkspaceIfChanged's convention: don't trap
+    // the recruiter here — they can create the job properly from /jobs/new.
+  }
+
   router.push('/dashboard')
 }
 function uploadLogo() {
   // TODO(user): open file picker → upload to storage.
-}
-function writeOwn() {
-  // TODO(user): switch to manual job-description editor.
 }
 </script>
 
@@ -446,6 +653,9 @@ function writeOwn() {
   font-weight: 500;
   white-space: nowrap;
 }
+.url-available.taken {
+  color: #b91c1c;
+}
 .url-check {
   width: 16px;
   height: 16px;
@@ -454,6 +664,21 @@ function writeOwn() {
   color: #047857;
   display: grid;
   place-items: center;
+}
+.url-check.checking {
+  background: #f3f4f6;
+  color: #9ca3af;
+  font-size: 10px;
+}
+.url-available.taken .url-check {
+  background: #fef2f2;
+  color: #b91c1c;
+}
+
+.workspace-save-error {
+  margin: -10px 0 0;
+  font-size: 12.5px;
+  color: #ef4444;
 }
 
 /* ── Logo row ────────────────────────────────────────────────────────────── */
@@ -521,6 +746,13 @@ function writeOwn() {
   color: #4f46e5;
   line-height: 1.5;
   font-weight: 500;
+}
+
+.draft-block {
+  margin-top: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
 }
 
 /* ── Card footer ─────────────────────────────────────────────────────────── */

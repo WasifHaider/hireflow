@@ -1,17 +1,12 @@
-import { randomBytes } from 'crypto';
 import {
-  BadRequestException,
   ConflictException,
-  ForbiddenException,
   Injectable,
   Logger,
   UnauthorizedException,
 } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { Candidate } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
-import { MailService } from '../../mail/mail.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { SafeCandidate } from '../types/safe-candidate.type';
 import { CandidateJwtPayload } from '../types/jwt-payload.type';
@@ -19,8 +14,6 @@ import { CandidateSigninDto } from './dto/candidate-signin.dto';
 import { CandidateSignupDto } from './dto/candidate-signup.dto';
 
 const BCRYPT_SALT_ROUNDS = 10;
-const VERIFICATION_TOKEN_BYTES = 32;
-const VERIFICATION_TTL_MS = 24 * 60 * 60 * 1000; // 24h
 
 @Injectable()
 export class CandidateAuthService {
@@ -29,41 +22,37 @@ export class CandidateAuthService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly jwtService: JwtService,
-    private readonly mailService: MailService,
-    private readonly config: ConfigService,
   ) {}
 
+  /**
+   * Email verification removed by product decision: signup activates the
+   * account immediately and returns a session, same shape as signin. No
+   * verification email is sent.
+   */
   async signup(dto: CandidateSignupDto): Promise<{
-    message: string;
-    email: string;
+    user: SafeCandidate;
+    accessToken: string;
   }> {
     const existing = await this.prisma.candidate.findUnique({
       where: { email: dto.email },
     });
 
-    // Only a fully-provisioned account (has a password AND is verified) blocks
-    // re-signup. An anonymous applicant row (no password) or an unverified
-    // signup may be (re)claimed by upsert below.
-    if (
-      existing &&
-      existing.passwordHash !== null &&
-      existing.emailVerifiedAt !== null
-    ) {
+    // Only a fully-provisioned account (has a password) blocks re-signup. An
+    // anonymous applicant row (no password, created by an earlier anonymous
+    // application) may still be claimed by the upsert below.
+    if (existing && existing.passwordHash !== null) {
       throw new ConflictException('Account already exists');
     }
 
     // bcrypt is CPU-bound — keep it outside any DB transaction.
     const passwordHash = await bcrypt.hash(dto.password, BCRYPT_SALT_ROUNDS);
+    const now = new Date();
 
-    // Opaque, cryptographically-random token (NOT a JWT): single-use,
-    // server-revocable, and carries no decodable payload.
-    const token = randomBytes(VERIFICATION_TOKEN_BYTES).toString('hex');
-    const tokenExpiresAt = new Date(Date.now() + VERIFICATION_TTL_MS);
-
-    // Upsert by email. Crucially we DO NOT touch emailVerifiedAt here — linking
-    // an anonymous application to this account only happens after the email is
-    // verified (defense-2).
-    await this.prisma.candidate.upsert({
+    // Upsert by email. Setting emailVerifiedAt here (immediately, no
+    // verification step) is what "reconciles" the account with any anonymous
+    // applications that already point at this same row (they were upserted
+    // by email at apply-time) — see ApplicationSubmissionService.
+    const candidate = await this.prisma.candidate.upsert({
       where: { email: dto.email },
       create: {
         email: dto.email,
@@ -71,73 +60,23 @@ export class CandidateAuthService {
         phone: dto.phone,
         linkedinUrl: dto.linkedinUrl,
         passwordHash,
-        emailVerificationToken: token,
-        emailVerificationTokenExpiresAt: tokenExpiresAt,
+        emailVerifiedAt: now,
+        lastLoginAt: now,
       },
       update: {
         fullName: dto.fullName,
         phone: dto.phone,
         linkedinUrl: dto.linkedinUrl,
         passwordHash,
-        emailVerificationToken: token,
-        emailVerificationTokenExpiresAt: tokenExpiresAt,
+        emailVerifiedAt: now,
+        lastLoginAt: now,
       },
     });
 
-    const appUrl = this.config.get<string>('APP_URL', 'http://localhost:5173');
-    const verificationLink = `${appUrl}/verify-candidate?token=${token}`;
-    await this.mailService.sendVerificationEmail(
-      dto.email,
-      dto.fullName,
-      verificationLink,
-    );
-
-    this.logger.log(`Candidate signup pending verification: ${dto.email}`);
+    this.logger.log(`Candidate signed up: ${dto.email}`);
     return {
-      message: 'Account created. Check your email to verify.',
-      email: dto.email,
-    };
-  }
-
-  async verifyEmail(token: string): Promise<{
-    user: SafeCandidate;
-    accessToken: string;
-  }> {
-    const candidate = await this.prisma.candidate.findUnique({
-      where: { emailVerificationToken: token },
-    });
-
-    // Identical message for "not found" and "expired" so we never leak which
-    // case the caller hit.
-    if (
-      !candidate ||
-      !candidate.emailVerificationTokenExpiresAt ||
-      candidate.emailVerificationTokenExpiresAt < new Date()
-    ) {
-      throw new BadRequestException('Invalid or expired verification token');
-    }
-
-    const now = new Date();
-    // RECONCILIATION HAPPENS HERE — but it is *implicit*. submitApplication
-    // upserts the candidate row by email, so any anonymous applications already
-    // point at THIS row. Setting emailVerifiedAt is all that's needed to "claim"
-    // them; there is no separate linking step.
-    const verified = await this.prisma.$transaction((tx) =>
-      tx.candidate.update({
-        where: { id: candidate.id },
-        data: {
-          emailVerifiedAt: now,
-          emailVerificationToken: null,
-          emailVerificationTokenExpiresAt: null,
-          lastLoginAt: now,
-        },
-      }),
-    );
-
-    this.logger.log(`Candidate verified: ${verified.email}`);
-    return {
-      user: this.toSafeCandidate(verified),
-      accessToken: this.generateToken(verified),
+      user: this.toSafeCandidate(candidate),
+      accessToken: this.generateToken(candidate),
     };
   }
 
@@ -156,12 +95,6 @@ export class CandidateAuthService {
 
     if (!candidate || !passwordValid) {
       throw new UnauthorizedException('Invalid credentials');
-    }
-
-    if (candidate.emailVerifiedAt === null) {
-      throw new ForbiddenException(
-        'Please verify your email before signing in',
-      );
     }
 
     const updated = await this.prisma.candidate.update({

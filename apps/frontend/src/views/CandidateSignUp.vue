@@ -7,57 +7,17 @@
       <span class="pill-emerald">For Job Seekers</span>
     </div>
 
-    <!-- ── Success state: verify email ───────────────────────────────────────── -->
-    <div v-if="submittedEmail" class="cand-card cand-card--center">
-      <div class="verify-mark">
-        <svg
-          width="26"
-          height="26"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-        >
-          <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
-          <path d="m22 6-10 7L2 6" />
-        </svg>
-      </div>
-      <h1 class="card-title">Check your inbox.</h1>
-      <p class="card-sub">
-        We sent a verification link to <strong>{{ submittedEmail }}</strong
-        >. Click it to activate your account, then sign in.
-      </p>
-      <AppButton class="mt-22" block @click="router.push('/candidate/signin')">
-        Go to sign in
-        <svg
-          width="16"
-          height="16"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-        >
-          <path d="M5 12h14" />
-          <path d="m12 5 7 7-7 7" />
-        </svg>
-      </AppButton>
-    </div>
-
     <!-- ── Form ──────────────────────────────────────────────────────────────── -->
-    <div v-else class="cand-card">
+    <div class="cand-card">
       <div class="card-head">
         <h1 class="card-title">Track your applications<br />in one place.</h1>
         <p class="card-sub">Get notified the moment a company moves you forward.</p>
       </div>
 
       <!-- Social (OAuth lands in a later phase) -->
-      <SocialButtons class="mb-22" :providers="['google', 'linkedin']" />
+      <!-- <SocialButtons class="mb-22" :providers="['google', 'linkedin']" /> -->
 
-      <div class="divider"><span>or sign up with email</span></div>
+      <!-- <div class="divider"><span>or sign up with email</span></div> -->
 
       <div v-if="errors.form" class="form-alert">{{ errors.form }}</div>
 
@@ -152,7 +112,6 @@ import { useCandidateAuthStore } from '@/stores/candidateAuth.store'
 import { getApiErrorMessage } from '@/plugins/axios'
 import AppField from '@/components/common/AppField.vue'
 import AppButton from '@/components/common/AppButton.vue'
-import SocialButtons from '@/components/common/SocialButtons.vue'
 import axios from 'axios'
 
 const router = useRouter()
@@ -163,7 +122,6 @@ const email = ref('')
 const password = ref('')
 const linkedinUrl = ref('')
 const loading = ref(false)
-const submittedEmail = ref('') // set on success → switches the card to the "check email" state
 
 const errors = ref({ fullName: '', email: '', password: '', linkedinUrl: '', form: '' })
 const touched = ref({ fullName: false, email: false, password: false, linkedinUrl: false })
@@ -220,13 +178,13 @@ async function handleSubmit() {
   errors.value.form = ''
   loading.value = true
   try {
-    const res = await candidateAuth.signupCandidate({
+    await candidateAuth.signupCandidate({
       fullName: fullName.value.trim(),
       email: email.value.trim().toLowerCase(),
       password: password.value,
       linkedinUrl: linkedinUrl.value.trim() || undefined,
     })
-    submittedEmail.value = res.email
+    router.push('/candidate/dashboard')
   } catch (err) {
     if (axios.isAxiosError(err)) {
       if (err.response?.status === 409) {
@@ -253,15 +211,19 @@ async function handleSubmit() {
   min-height: 100dvh;
   background:
     radial-gradient(1000px 600px at 100% 0%, rgba(16, 185, 129, 0.08), transparent 60%),
-    radial-gradient(1000px 600px at 0% 100%, rgba(99, 102, 241, 0.06), transparent 60%),
-    #fbfaf7;
+    radial-gradient(1000px 600px at 0% 100%, rgba(99, 102, 241, 0.06), transparent 60%), #fbfaf7;
   display: flex;
   flex-direction: column;
   align-items: center;
   padding: 56px 16px;
   position: relative;
   overflow: hidden;
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-family:
+    'Inter',
+    -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    sans-serif;
   color: #111827;
   -webkit-font-smoothing: antialiased;
 }

@@ -33,6 +33,11 @@ export interface SignupCompanyRequest {
   size?: CompanySize
 }
 
+export interface UpdateCompanyRequest {
+  companyName?: string
+  slug?: string
+}
+
 export interface SigninRequest {
   email: string
   password: string
@@ -64,12 +69,6 @@ export interface CandidateSignupRequest {
 export interface CandidateSigninRequest {
   email: string
   password: string
-}
-
-/** POST /auth/candidate/signup — no token; email must be verified first. */
-export interface CandidateSignupResponse {
-  message: string
-  email: string
 }
 
 /** POST /auth/candidate/signin & GET /auth/candidate/verify */

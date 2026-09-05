@@ -14,9 +14,9 @@
       </div>
 
       <!-- Social (OAuth lands in a later phase) -->
-      <SocialButtons class="mb-22" :providers="['google', 'linkedin']" />
+      <!-- <SocialButtons class="mb-22" :providers="['google', 'linkedin']" /> -->
 
-      <div class="divider"><span>or</span></div>
+      <!-- <div class="divider"><span>or</span></div> -->
 
       <div v-if="showForgotAlert" class="info-alert">
         <svg
@@ -122,7 +122,6 @@ import { useCandidateAuthStore } from '@/stores/candidateAuth.store'
 import { getApiErrorMessage } from '@/plugins/axios'
 import AppField from '@/components/common/AppField.vue'
 import AppButton from '@/components/common/AppButton.vue'
-import SocialButtons from '@/components/common/SocialButtons.vue'
 import axios from 'axios'
 
 const router = useRouter()
@@ -174,8 +173,6 @@ async function handleSubmit() {
     if (axios.isAxiosError(err)) {
       if (err.response?.status === 401) {
         errors.value.form = 'Invalid email or password.'
-      } else if (err.response?.status === 403) {
-        errors.value.form = 'Please verify your email before signing in. Check your inbox.'
       } else {
         errors.value.form = getApiErrorMessage(err)
       }

@@ -10,6 +10,7 @@ import * as bcrypt from 'bcrypt';
 import { PrismaService } from '../prisma/prisma.service';
 import { SigninDto } from './dto/signin.dto';
 import { SignupCompanyDto } from './dto/signup-company.dto';
+import { UpdateCompanyDto } from './dto/update-company.dto';
 import { JwtPayload } from './types/jwt-payload.type';
 import { SafeUser } from './types/safe-user.type';
 
@@ -93,6 +94,47 @@ export class AuthService {
       company,
       accessToken,
     };
+  }
+
+  async updateCompany(
+    companyId: string,
+    dto: UpdateCompanyDto,
+  ): Promise<Company> {
+    const data: Prisma.CompanyUpdateInput = {};
+    if (dto.companyName !== undefined) data.name = dto.companyName;
+
+    if (dto.slug !== undefined) {
+      const existing = await this.prisma.company.findUnique({
+        where: { slug: dto.slug },
+      });
+      if (existing && existing.id !== companyId) {
+        throw new ConflictException('Workspace URL is already taken');
+      }
+      data.slug = dto.slug;
+    }
+
+    try {
+      return await this.prisma.company.update({
+        where: { id: companyId },
+        data,
+      });
+    } catch (error) {
+      if (this.isUniqueConstraintOn(error, 'slug')) {
+        throw new ConflictException('Workspace URL is already taken');
+      }
+      throw error;
+    }
+  }
+
+  /**
+   * Live availability check for the workspace-URL field (Welcome.vue). When
+   * currentCompanyId is provided, the company's own current slug is treated
+   * as available (so "keeping the same value" never shows as taken).
+   */
+  async isSlugAvailable(slug: string, currentCompanyId?: string): Promise<boolean> {
+    const existing = await this.prisma.company.findUnique({ where: { slug } });
+    if (!existing) return true;
+    return currentCompanyId !== undefined && existing.id === currentCompanyId;
   }
 
   private async createCompanyAndUser(

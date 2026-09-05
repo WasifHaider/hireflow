@@ -1,12 +1,4 @@
-import {
-  Body,
-  Controller,
-  Get,
-  HttpCode,
-  HttpStatus,
-  Post,
-  Query,
-} from '@nestjs/common';
+import { Body, Controller, HttpCode, HttpStatus, Post } from '@nestjs/common';
 import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import { CandidateAuthService } from './candidate-auth.service';
@@ -23,12 +15,9 @@ export class CandidateAuthController {
   // global throttler to 5 requests/minute on this route.
   @Throttle({ default: { limit: 5, ttl: 60000 } })
   @ApiOperation({
-    summary: 'Register a candidate account (verification email sent, no JWT)',
+    summary: 'Register a candidate account (activated immediately, JWT issued)',
   })
-  @ApiResponse({
-    status: 201,
-    description: 'Account created; verification email sent',
-  })
+  @ApiResponse({ status: 201, description: 'Account created; authenticated' })
   @ApiResponse({ status: 400, description: 'Validation error' })
   @ApiResponse({ status: 409, description: 'Account already exists' })
   @ApiResponse({ status: 429, description: 'Too many requests' })
@@ -36,26 +25,12 @@ export class CandidateAuthController {
     return this.candidateAuthService.signup(dto);
   }
 
-  @Get('verify')
-  @ApiOperation({
-    summary: 'Verify a candidate email and receive an access token',
-  })
-  @ApiResponse({ status: 200, description: 'Email verified; JWT issued' })
-  @ApiResponse({
-    status: 400,
-    description: 'Invalid or expired verification token',
-  })
-  verify(@Query('token') token: string) {
-    return this.candidateAuthService.verifyEmail(token);
-  }
-
   @Post('signin')
   @HttpCode(HttpStatus.OK)
   @Throttle({ default: { limit: 5, ttl: 60000 } })
-  @ApiOperation({ summary: 'Sign in as a verified candidate' })
+  @ApiOperation({ summary: 'Sign in as a candidate' })
   @ApiResponse({ status: 200, description: 'Authenticated; JWT issued' })
   @ApiResponse({ status: 401, description: 'Invalid credentials' })
-  @ApiResponse({ status: 403, description: 'Email not verified' })
   @ApiResponse({ status: 429, description: 'Too many requests' })
   signin(@Body() dto: CandidateSigninDto) {
     return this.candidateAuthService.signin(dto);

@@ -91,11 +91,6 @@ const router = createRouter({
       component: () => import('@/views/CandidateSignIn.vue'),
       meta: { redirectIfCandidateAuthed: true },
     },
-    {
-      path: '/verify-candidate',
-      name: 'verify-candidate',
-      component: () => import('@/views/CandidateVerify.vue'),
-    },
     // ── Candidate app shell ──────────────────────────────────────────────────
     {
       path: '',

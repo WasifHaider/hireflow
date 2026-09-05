@@ -6,7 +6,6 @@ import type {
   CandidateAuthResponse,
   CandidateSigninRequest,
   CandidateSignupRequest,
-  CandidateSignupResponse,
 } from '@/types/auth'
 
 // Candidate sessions are kept under SEPARATE keys from the recruiter token
@@ -51,25 +50,14 @@ export const useCandidateAuthStore = defineStore('candidateAuth', () => {
     localStorage.removeItem(CANDIDATE_USER_KEY)
   }
 
-  /** Creates the account. Returns the confirmation message — NO token is issued
-   *  until the email is verified, so the UI must prompt the user to check mail. */
-  async function signupCandidate(
-    payload: CandidateSignupRequest,
-  ): Promise<CandidateSignupResponse> {
-    const { data } = await api.post<CandidateSignupResponse>('/auth/candidate/signup', payload)
-    return data
+  /** Creates the account and signs in immediately — no email verification step. */
+  async function signupCandidate(payload: CandidateSignupRequest): Promise<void> {
+    const { data } = await api.post<CandidateAuthResponse>('/auth/candidate/signup', payload)
+    _setAuth(data)
   }
 
   async function signinCandidate(payload: CandidateSigninRequest): Promise<void> {
     const { data } = await api.post<CandidateAuthResponse>('/auth/candidate/signin', payload)
-    _setAuth(data)
-  }
-
-  /** Exchanges the emailed verification token for a session (user + JWT). */
-  async function verifyEmail(token: string): Promise<void> {
-    const { data } = await api.get<CandidateAuthResponse>('/auth/candidate/verify', {
-      params: { token },
-    })
     _setAuth(data)
   }
 
@@ -102,7 +90,6 @@ export const useCandidateAuthStore = defineStore('candidateAuth', () => {
     candidateName,
     signupCandidate,
     signinCandidate,
-    verifyEmail,
     signoutCandidate,
     hydrate,
   }

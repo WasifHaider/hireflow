@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Patch, Post, Query, UseGuards } from '@nestjs/common';
 import {
   ApiBearerAuth,
   ApiOperation,
@@ -7,9 +7,12 @@ import {
 } from '@nestjs/swagger';
 import { AuthService } from './auth.service';
 import { CurrentUser } from './decorators/current-user.decorator';
+import { CheckSlugQueryDto } from './dto/check-slug-query.dto';
 import { SigninDto } from './dto/signin.dto';
 import { SignupCompanyDto } from './dto/signup-company.dto';
+import { UpdateCompanyDto } from './dto/update-company.dto';
 import { RecruiterAuthGuard } from './guards/recruiter-auth.guard';
+import type { AuthenticatedRecruiter } from './types/auth-user.type';
 import type { SafeUser } from './types/safe-user.type';
 
 @ApiTags('auth')
@@ -42,5 +45,33 @@ export class AuthController {
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   getMe(@CurrentUser() user: SafeUser): SafeUser {
     return user;
+  }
+
+  @Patch('company')
+  @UseGuards(RecruiterAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: "Update the current recruiter's company (name/slug)" })
+  @ApiResponse({ status: 200, description: 'Company updated' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 409, description: 'Workspace URL already taken' })
+  updateCompany(
+    @CurrentUser() user: AuthenticatedRecruiter,
+    @Body() dto: UpdateCompanyDto,
+  ) {
+    return this.authService.updateCompany(user.companyId, dto);
+  }
+
+  @Get('company/slug-available')
+  @UseGuards(RecruiterAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Check whether a workspace URL (slug) is available' })
+  @ApiResponse({ status: 200, description: '{ available: boolean }' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  async checkSlugAvailable(
+    @CurrentUser() user: AuthenticatedRecruiter,
+    @Query() query: CheckSlugQueryDto,
+  ): Promise<{ available: boolean }> {
+    const available = await this.authService.isSlugAvailable(query.slug, user.companyId);
+    return { available };
   }
 }

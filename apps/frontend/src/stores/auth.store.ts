@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import api from '@/plugins/axios'
-import type { User, Company, AuthResponse, SignupCompanyRequest, SigninRequest } from '@/types/auth'
+import type { User, Company, AuthResponse, SignupCompanyRequest, SigninRequest, UpdateCompanyRequest } from '@/types/auth'
 
 const TOKEN_KEY = 'access_token'
 
@@ -56,6 +56,18 @@ export const useAuthStore = defineStore('auth', () => {
     company.value = data.company
   }
 
+  async function updateCompany(payload: UpdateCompanyRequest): Promise<void> {
+    const { data } = await api.patch<Company>('/auth/company', payload)
+    company.value = data
+  }
+
+  async function checkSlugAvailable(slug: string): Promise<boolean> {
+    const { data } = await api.get<{ available: boolean }>('/auth/company/slug-available', {
+      params: { slug },
+    })
+    return data.available
+  }
+
   async function hydrate(): Promise<void> {
     if (isHydrated.value) return
     if (hydratePromise) return hydratePromise
@@ -89,6 +101,8 @@ export const useAuthStore = defineStore('auth', () => {
     signin,
     signout,
     fetchCurrentUser,
+    updateCompany,
+    checkSlugAvailable,
     hydrate,
   }
 })

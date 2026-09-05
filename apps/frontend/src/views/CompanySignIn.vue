@@ -19,7 +19,7 @@
         </div>
 
         <!-- Google (disabled, OAuth lands later) -->
-        <SocialButtons :providers="['google']" soon />
+        <!-- <SocialButtons :providers="['google']" soon /> -->
 
         <!-- Divider -->
         <div class="divider"><span>or</span></div>
@@ -202,7 +202,6 @@ import { getApiErrorMessage } from '@/plugins/axios'
 import AppField from '@/components/common/AppField.vue'
 import AppButton from '@/components/common/AppButton.vue'
 import AppCheckbox from '@/components/common/AppCheckbox.vue'
-import SocialButtons from '@/components/common/SocialButtons.vue'
 import axios from 'axios'
 
 const router = useRouter()
