@@ -1,10 +1,10 @@
 import logging
 import os
 
+import httpx
 import numpy as np
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException
-from openai import OpenAI, OpenAIError
 from pydantic import BaseModel, Field
 
 load_dotenv()
@@ -12,17 +12,19 @@ load_dotenv()
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("hireflow-ml")
 
-EMBEDDING_MODEL = "text-embedding-3-small"
+# Groq stopped serving nomic-embed-text-v1.5 on /v1/embeddings (404
+# model_not_found as of 2026-09) — moved embeddings to Voyage AI. Groq is kept
+# for nothing here; chat-completion generation (job descriptions, dashboard
+# suggestions) lives entirely in the NestJS backend's AiService, unrelated to
+# this file.
+EMBEDDING_MODEL = "voyage-3.5"
+VOYAGE_EMBEDDINGS_URL = "https://api.voyageai.com/v1/embeddings"
 
 app = FastAPI(title="HireFlow ML Service")
 
-# Instantiate the client once at module load. The SDK reads OPENAI_API_KEY from
-# the environment; we surface a clear error at startup if it is missing rather
-# than failing on the first request.
-_api_key = os.getenv("OPENAI_API_KEY")
+_api_key = os.getenv("VOYAGE_API_KEY")
 if not _api_key:
-    logger.warning("OPENAI_API_KEY not set — /score will fail until it is provided")
-client = OpenAI(api_key=_api_key) if _api_key else None
+    logger.warning("VOYAGE_API_KEY not set — /score will fail until it is provided")
 
 
 class ScoreRequest(BaseModel):
@@ -42,9 +44,16 @@ def health():
 
 
 def _embed(texts: list[str]) -> list[np.ndarray]:
-    """Embed a batch of texts in one API call and return them as numpy vectors."""
-    response = client.embeddings.create(model=EMBEDDING_MODEL, input=texts)
-    return [np.array(item.embedding, dtype=np.float32) for item in response.data]
+    """Embed a batch of texts in one Voyage API call and return them as numpy vectors."""
+    response = httpx.post(
+        VOYAGE_EMBEDDINGS_URL,
+        headers={"Authorization": f"Bearer {_api_key}", "Content-Type": "application/json"},
+        json={"input": texts, "model": EMBEDDING_MODEL},
+        timeout=30.0,
+    )
+    response.raise_for_status()
+    data = response.json()["data"]
+    return [np.array(item["embedding"], dtype=np.float32) for item in data]
 
 
 def _cosine_similarity(a: np.ndarray, b: np.ndarray) -> float:
@@ -56,8 +65,8 @@ def _cosine_similarity(a: np.ndarray, b: np.ndarray) -> float:
 
 @app.post("/score", response_model=ScoreResponse)
 def score(req: ScoreRequest) -> ScoreResponse:
-    if client is None:
-        raise HTTPException(status_code=503, detail="OPENAI_API_KEY not configured")
+    if _api_key is None:
+        raise HTTPException(status_code=503, detail="VOYAGE_API_KEY not configured")
 
     # Whitespace-only text passes min_length=1 but is meaningless to embed.
     if not req.resume_text.strip() or not req.job_description.strip():
@@ -66,14 +75,14 @@ def score(req: ScoreRequest) -> ScoreResponse:
     logger.info("Embedding resume + job with model %s", EMBEDDING_MODEL)
     try:
         resume_vec, job_vec = _embed([req.resume_text, req.job_description])
-    except OpenAIError as exc:
-        logger.error("OpenAI embedding call failed: %s", exc)
+    except httpx.HTTPError as exc:
+        logger.error("Voyage embedding call failed: %s", exc)
         # 502: upstream dependency failed. NestJS treats this as retryable.
         raise HTTPException(status_code=502, detail="Embedding provider error") from exc
 
     cosine = _cosine_similarity(resume_vec, job_vec)
-    # text-embedding-3 vectors yield cosine in [-1, 1]; for real resume/JD pairs
-    # it lands in ~[0.1, 0.6]. Clamp negatives to 0, then scale to 0-100.
+    # voyage-3.5 vectors yield cosine in [-1, 1]; for real resume/JD pairs it
+    # lands in ~[0.1, 0.6]. Clamp negatives to 0, then scale to 0-100.
     score_value = round(max(0.0, cosine) * 100, 2)
     logger.info("cosine=%.4f -> score=%.2f", cosine, score_value)
 

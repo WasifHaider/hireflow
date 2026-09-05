@@ -98,7 +98,7 @@ export class ApplicationScoringProcessor {
       .filter(Boolean)
       .join('\n\n');
 
-    // 3. Ask the Python ml-service (which owns the OpenAI call) for a score.
+    // 3. Ask the Python ml-service (which owns the Groq embedding call) for a score.
     const score = await this.mlClient.score({ resumeText, jobDescription: jobText });
     const aiFitScore = Math.round(score);
 
@@ -112,7 +112,7 @@ export class ApplicationScoringProcessor {
         aiFitScore,
         resumeText,
         aiScoreDetails: {
-          model: 'text-embedding-3-small',
+          model: 'nomic-embed-text-v1.5',
           rawScore: score,
           scoredAt: new Date().toISOString(),
         },

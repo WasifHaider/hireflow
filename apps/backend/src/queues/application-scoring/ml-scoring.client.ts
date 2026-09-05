@@ -14,8 +14,9 @@ export interface ScoreInput {
 }
 
 /**
- * Thin client for the Python ml-service POST /score endpoint. The OpenAI call
- * lives in Python; this just ships text over HTTP and reads back a 0-100 score.
+ * Thin client for the Python ml-service POST /score endpoint. The Groq
+ * embedding call lives in Python; this just ships text over HTTP and reads
+ * back a 0-100 score.
  */
 @Injectable()
 export class MlScoringClient {
