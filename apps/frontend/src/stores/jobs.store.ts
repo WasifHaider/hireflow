@@ -2,12 +2,20 @@ import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import api, { getApiErrorMessage } from '@/plugins/axios'
 import type { Job, JobPayload, JobStatus, JobListQuery, JobListResponse, JobFacets } from '@/types/job'
+import type { GenerateJobDescriptionRequest, GeneratedJobDescription } from '@/types/ai'
 
 export const useJobsStore = defineStore('jobs', () => {
   const saving = ref(false)
   const loading = ref(false)
   const error = ref<string | null>(null)
   const facets = ref<JobFacets>({ departments: [], locations: [], owners: [] })
+
+  async function generateJobDescription(
+    payload: GenerateJobDescriptionRequest,
+  ): Promise<GeneratedJobDescription> {
+    const { data } = await api.post<GeneratedJobDescription>('/ai/generate-job-description', payload)
+    return data
+  }
 
   async function createJob(payload: JobPayload): Promise<Job> {
     saving.value = true
@@ -99,5 +107,5 @@ export const useJobsStore = defineStore('jobs', () => {
     }
   }
 
-  return { saving, loading, error, facets, createJob, updateJob, fetchJob, fetchJobs, fetchFacets, setJobStatus, deleteJob }
+  return { saving, loading, error, facets, generateJobDescription, createJob, updateJob, fetchJob, fetchJobs, fetchFacets, setJobStatus, deleteJob }
 })

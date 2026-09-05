@@ -10,6 +10,26 @@
       <AppField v-model="form.department" label="Department" placeholder="Engineering" />
     </div>
 
+    <!-- AI draft trigger — same Groq-backed generator used in the Welcome
+         onboarding wizard, now available for every job (not just the first). -->
+    <div class="ai-hint">
+      <v-icon color="#4F46E5" size="20">mdi-star-four-points</v-icon>
+      <span class="ai-hint-text">
+        Skip the writing. We'll generate the description, requirements, and must-have skills
+        from the title in ~15 seconds — you can edit anything after.
+      </span>
+      <AppButton
+        variant="ghost"
+        :loading="generating"
+        :disabled="!form.title.trim()"
+        @click="handleGenerate"
+      >
+        <v-icon size="14">mdi-star-four-points</v-icon>
+        Generate with AI
+      </AppButton>
+    </div>
+    <p v-if="generateError" class="field-err">{{ generateError }}</p>
+
     <div class="grid three">
       <AppField v-model="form.location" label="Location *" placeholder="Austin, TX" :error="errors.location" />
       <div class="field">
@@ -41,8 +61,13 @@
 </template>
 
 <script setup lang="ts">
+import { ref } from 'vue'
 import AppField from '@/components/common/AppField.vue'
+import AppButton from '@/components/common/AppButton.vue'
 import SegmentedTabs from '@/components/common/SegmentedTabs.vue'
+import { useJobsStore } from '@/stores/jobs.store'
+import { useToastStore } from '@/stores/toast.store'
+import { getApiErrorMessage } from '@/plugins/axios'
 import {
   type JobFormState,
   type JobType,
@@ -51,7 +76,38 @@ import {
   EMPLOYMENT_LABELS,
 } from '@/types/job'
 
-defineProps<{ form: JobFormState; errors: Record<string, string> }>()
+const props = defineProps<{ form: JobFormState; errors: Record<string, string> }>()
+const jobsStore = useJobsStore()
+const toastStore = useToastStore()
+
+const generating = ref(false)
+const generateError = ref('')
+
+// Same generator + prompt shape as the Welcome onboarding wizard, exposed here
+// so recruiters can draft ANY job with AI, not just the first one at signup.
+// `form` is the same reactive object the parent (JobForm) owns — mutating its
+// nested fields directly is the pattern this step already uses via
+// v-model="form.title" above, so this stays consistent rather than emitting.
+async function handleGenerate() {
+  if (!props.form.title.trim()) return
+  generating.value = true
+  generateError.value = ''
+  try {
+    const draft = await jobsStore.generateJobDescription({
+      title: props.form.title.trim(),
+      department: props.form.department.trim() || undefined,
+      location: props.form.location.trim() || undefined,
+    })
+    props.form.description = draft.description
+    props.form.requirements = draft.requirements
+    props.form.mustHaveSkills = draft.mustHaveSkills
+    toastStore.show('AI draft generated — description, requirements, and skills are filled in below.')
+  } catch (e) {
+    generateError.value = getApiErrorMessage(e, 'Could not generate a draft. Try again or write your own.')
+  } finally {
+    generating.value = false
+  }
+}
 
 const jobTypeOptions = (['ONSITE', 'HYBRID', 'REMOTE'] as JobType[]).map((v) => ({
   label: JOB_TYPE_LABELS[v],
@@ -99,6 +155,23 @@ const employmentOptions = (
 .field-err {
   font-size: 12px;
   color: var(--hf-danger);
+}
+.ai-hint {
+  margin-top: -4px;
+  padding: 14px;
+  background: #eef2ff;
+  border: 1px solid #e0e7ff;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.ai-hint-text {
+  flex: 1;
+  font-size: 12.5px;
+  color: #4f46e5;
+  line-height: 1.5;
+  font-weight: 500;
 }
 /* textarea: same border + focus treatment as AppField (design .hf-textarea) */
 .hf-textarea :deep(.v-field) {

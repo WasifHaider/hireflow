@@ -1,5 +1,6 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { ApplicationStage, Prisma } from '@prisma/client';
+import { AiService } from '../ai/ai.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { DashboardSummaryResponseDto } from './dto/dashboard-summary-response.dto';
 
@@ -8,12 +9,24 @@ const TIMESERIES_DAYS = 7;
 
 @Injectable()
 export class DashboardService {
-  constructor(private readonly prisma: PrismaService) {}
+  private readonly logger = new Logger(DashboardService.name);
+
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly aiService: AiService,
+  ) {}
 
   async getSummary(companyId: string): Promise<DashboardSummaryResponseDto> {
+    // UTC-based boundary, matching Postgres's date_trunc('day', applied_at):
+    // `applied_at` is a `timestamp without time zone` column and Prisma always
+    // writes DateTime values as their UTC instant, so date_trunc buckets by
+    // UTC calendar day regardless of the DB session's timezone setting. Using
+    // server-LOCAL midnight here (as before) desyncs the two: on a non-UTC
+    // host the "since" boundary and the per-day keys below no longer line up
+    // with what Postgres actually grouped by, and every column can read 0.
     const since = new Date();
-    since.setHours(0, 0, 0, 0);
-    since.setDate(since.getDate() - (TIMESERIES_DAYS - 1));
+    since.setUTCHours(0, 0, 0, 0);
+    since.setUTCDate(since.getUTCDate() - (TIMESERIES_DAYS - 1));
 
     const [activeJobs, totalApplications, awaitingReview, avgAgg, stageGroups, perDayRows] =
       await Promise.all([
@@ -46,7 +59,7 @@ export class DashboardService {
     const byDate = new Map(perDayRows.map((r) => [r.date, Number(r.count)]));
     const applicationsPerDay = Array.from({ length: TIMESERIES_DAYS }, (_, i) => {
       const d = new Date(since);
-      d.setDate(since.getDate() + i);
+      d.setUTCDate(since.getUTCDate() + i);
       const date = d.toISOString().slice(0, 10);
       return { date, count: byDate.get(date) ?? 0 };
     });
@@ -61,5 +74,25 @@ export class DashboardService {
       pipeline,
       applicationsPerDay,
     };
+  }
+
+  /**
+   * Non-critical by design: a failed/slow Groq call should never break the
+   * dashboard, so callers get an empty array on failure rather than a thrown
+   * error propagating to the client.
+   */
+  async getSuggestions(companyId: string): Promise<string[]> {
+    const { stats, pipeline } = await this.getSummary(companyId);
+    try {
+      return await this.aiService.generateDashboardSuggestions({
+        ...stats,
+        pipeline: { ...pipeline },
+      });
+    } catch (err) {
+      this.logger.warn(
+        `AI suggestions unavailable for company ${companyId}: ${(err as Error).message}`,
+      );
+      return [];
+    }
   }
 }

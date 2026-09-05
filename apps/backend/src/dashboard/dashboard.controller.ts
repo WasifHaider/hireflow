@@ -20,4 +20,14 @@ export class DashboardController {
   getSummary(@CurrentUser() user: SafeUser): Promise<DashboardSummaryResponseDto> {
     return this.dashboardService.getSummary(user.companyId);
   }
+
+  @Get('suggestions')
+  @ApiOperation({ summary: 'AI-generated suggestions derived from the dashboard summary' })
+  @ApiResponse({ status: 200, description: 'Suggestions (may be empty if AI is unavailable)' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  getSuggestions(@CurrentUser() user: SafeUser): Promise<{ suggestions: string[] }> {
+    return this.dashboardService
+      .getSuggestions(user.companyId)
+      .then((suggestions) => ({ suggestions }));
+  }
 }

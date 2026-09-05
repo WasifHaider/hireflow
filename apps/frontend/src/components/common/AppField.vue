@@ -5,16 +5,16 @@
       <slot name="label-action" />
     </div>
 
-    <!-- Autocomplete: multiple → Vuetify types modelValue as an array, so bind
+    <!-- Autocomplete: when multiple, Vuetify types modelValue as an array, so bind
          the shared unknown model explicitly rather than via v-model. -->
     <v-autocomplete
       v-if="type === 'autocomplete'"
-      :model-value="model as unknown[] | undefined"
+      :model-value="model as unknown"
       variant="outlined"
       :items="items"
       :placeholder="placeholder"
       :disabled="disabled"
-      multiple
+      :multiple="multiple"
       :menu-props="menuProps"
       @update:model-value="model = $event"
       @blur="emit('blur')"
@@ -110,6 +110,8 @@ const props = withDefaults(
     disabled?: boolean
     /** static text rendered inside the field, before the input (e.g. a URL prefix) */
     prefix?: string
+    /** type="autocomplete" only — chip multi-select vs. single value. Default false. */
+    multiple?: boolean
   }>(),
   {
     type: 'text',
@@ -120,6 +122,7 @@ const props = withDefaults(
     autocomplete: undefined,
     disabled: false,
     prefix: undefined,
+    multiple: false,
   },
 )
 

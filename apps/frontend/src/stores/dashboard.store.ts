@@ -13,6 +13,11 @@ export const useDashboardStore = defineStore('dashboard', () => {
   const loading = ref(false)
   const error = ref<string | null>(null)
 
+  // Independent state: the suggestions card is non-critical and must never
+  // block or error out the main dashboard if the AI call is slow/unavailable.
+  const suggestions = ref<string[]>([])
+  const suggestionsLoading = ref(false)
+
   async function load(): Promise<void> {
     loading.value = true
     error.value = null
@@ -32,5 +37,27 @@ export const useDashboardStore = defineStore('dashboard', () => {
     }
   }
 
-  return { summary, recentApplications, loading, error, load }
+  async function fetchSuggestions(): Promise<void> {
+    suggestionsLoading.value = true
+    try {
+      const { data } = await api.get<{ suggestions: string[] }>('/dashboard/suggestions')
+      suggestions.value = data.suggestions
+    } catch {
+      // Silent: this card falls back to its own "Coming soon"/empty state.
+      suggestions.value = []
+    } finally {
+      suggestionsLoading.value = false
+    }
+  }
+
+  return {
+    summary,
+    recentApplications,
+    loading,
+    error,
+    suggestions,
+    suggestionsLoading,
+    load,
+    fetchSuggestions,
+  }
 })

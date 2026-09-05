@@ -87,7 +87,7 @@
 
 <script setup lang="ts">
 import { reactive, ref, watch, onMounted, onUnmounted, computed } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import { useCandidatesStore } from '@/stores/candidates.store'
 import { useAuthStore } from '@/stores/auth.store'
 import type { ApplicationStage, CandidateListResponse } from '@/types/candidate'
@@ -101,6 +101,7 @@ import AppPagination from '@/components/common/AppPagination.vue'
 import HfIcon from '@/components/common/HfIcon.vue'
 
 const router = useRouter()
+const route = useRoute()
 const store = useCandidatesStore()
 const auth = useAuthStore()
 
@@ -110,7 +111,9 @@ const workspace = computed(() => auth.companyName || 'Workspace')
 
 const page = ref(1)
 const pageSize = ref(10)
-const search = ref('')
+// Prefilled from ?q= when navigating in from the top-bar search
+// (RecruiterLayout) — normal in-page typing still goes through onSearch below.
+const search = ref(typeof route.query.q === 'string' ? route.query.q : '')
 const sortBy = ref<'appliedAt' | 'aiFitScore'>('aiFitScore')
 const sortOrder = ref<'asc' | 'desc'>('desc')
 
