@@ -24,6 +24,23 @@
         <!-- Divider -->
         <div class="divider"><span>or</span></div>
 
+        <!-- Demo credentials -->
+        <button type="button" class="demo-btn" @click="fillDemoCredentials">
+          <svg
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" />
+          </svg>
+          Use demo workspace credentials
+        </button>
+
         <!-- Forgot password info alert -->
         <div v-if="showForgotAlert" class="info-alert">
           <svg
@@ -262,6 +279,15 @@ function handleForgotPassword() {
   showForgotAlert.value = true
 }
 
+function fillDemoCredentials() {
+  email.value = 'demo@hireflow.dev'
+  password.value = 'Demo1234'
+  touched.value.email = true
+  touched.value.password = true
+  errors.value.email = validateEmail()
+  errors.value.password = validatePassword()
+}
+
 function avatarBg(name: string): string {
   const colors = ['#818CF8', '#A78BFA', '#F472B6', '#34D399', '#FBBF24', '#60A5FA']
   let h = 0
@@ -436,6 +462,27 @@ function initials(name: string): string {
 }
 .forgot-link:hover {
   text-decoration: underline;
+}
+
+/* ── Demo credentials button ─────────────────────────────────────────────── */
+.demo-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  padding: 10px 14px;
+  border-radius: 8px;
+  border: 1px dashed #c7d2fe;
+  background: #eef2ff;
+  color: #4f46e5;
+  font-size: 13.5px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+.demo-btn:hover {
+  background: #e0e7ff;
 }
 
 /* ── Footer links ────────────────────────────────────────────────────────── */

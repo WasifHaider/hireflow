@@ -14,7 +14,9 @@
           :to="tab.to"
         >
           {{ tab.label }}
-          <span v-if="tab.badge && applicationCount" class="cand-nav-count">{{ applicationCount }}</span>
+          <span v-if="tab.badge && applicationCount" class="cand-nav-count">{{
+            applicationCount
+          }}</span>
         </v-btn>
         <!-- Not yet backed by an API — shown for parity with the design, disabled. -->
         <v-tooltip v-else text="Coming soon" location="bottom">
@@ -76,9 +78,18 @@ interface NavTab {
   activeNames?: string[]
 }
 const navTabs: NavTab[] = [
-  { label: 'My Applications', to: '/candidate/dashboard', badge: true, activeNames: ['candidate-dashboard'] },
-  { label: 'Browse Jobs', to: '/candidate/jobs', activeNames: ['candidate-jobs', 'candidate-job-detail'] },
-  { label: 'Saved' },
+  {
+    label: 'My Applications',
+    to: '/candidate/dashboard',
+    badge: true,
+    activeNames: ['candidate-dashboard'],
+  },
+  {
+    label: 'Browse Jobs',
+    to: '/candidate/jobs',
+    activeNames: ['candidate-jobs', 'candidate-job-detail'],
+  },
+  // { label: 'Saved' },
   { label: 'Profile', to: '/candidate/profile', activeNames: ['candidate-profile'] },
 ]
 
@@ -179,8 +190,7 @@ function signOut() {
   min-height: 100%;
   background:
     radial-gradient(800px 400px at 100% 0%, rgba(16, 185, 129, 0.06), transparent 60%),
-    radial-gradient(800px 400px at 0% 100%, rgba(99, 102, 241, 0.05), transparent 60%),
-    #fbfaf7;
+    radial-gradient(800px 400px at 0% 100%, rgba(99, 102, 241, 0.05), transparent 60%), #fbfaf7;
 }
 .cand-main {
   max-width: 1100px;

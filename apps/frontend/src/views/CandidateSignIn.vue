@@ -16,6 +16,23 @@
       <!-- Social (OAuth lands in a later phase) -->
       <!-- <SocialButtons class="mb-22" :providers="['google', 'linkedin']" /> -->
 
+      <!-- Demo credentials -->
+      <button type="button" class="demo-btn" @click="fillDemoCredentials">
+        <svg
+          width="16"
+          height="16"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
+          <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" />
+        </svg>
+        Use demo candidate credentials
+      </button>
+
       <!-- <div class="divider"><span>or</span></div> -->
 
       <div v-if="showForgotAlert" class="info-alert">
@@ -150,6 +167,15 @@ function onBlur(field: 'email' | 'password') {
   touched.value[field] = true
   if (field === 'email') errors.value.email = validateEmail()
   else errors.value.password = validatePassword()
+}
+
+function fillDemoCredentials() {
+  email.value = 'demo.candidate@hireflow.dev'
+  password.value = 'Demo1234'
+  touched.value.email = true
+  touched.value.password = true
+  errors.value.email = validateEmail()
+  errors.value.password = validatePassword()
 }
 
 const isFormValid = computed(() => !validateEmail() && !validatePassword())
@@ -379,6 +405,28 @@ async function handleSubmit() {
 }
 .forgot-link:hover {
   text-decoration: underline;
+}
+
+/* ── Demo credentials button ─────────────────────────────────────────────── */
+.demo-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  padding: 10px 14px;
+  border-radius: 8px;
+  border: 1px dashed #a7f3d0;
+  background: #ecfdf5;
+  color: #047857;
+  font-size: 13.5px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s ease;
+  margin-bottom: 14px;
+}
+.demo-btn:hover {
+  background: #d1fae5;
 }
 
 .mt-22 {
