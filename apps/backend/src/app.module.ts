@@ -5,12 +5,14 @@ import { APP_GUARD } from '@nestjs/core';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
+import { AgentModule } from './agent/agent.module';
+import { AiModule } from './ai/ai.module';
+import { AnalyticsModule } from './analytics/analytics.module';
 import { AuthModule } from './auth/auth.module';
 import { ApplicationsModule } from './applications/applications.module';
 import { CandidateModule } from './candidate/candidate.module';
 import { DashboardModule } from './dashboard/dashboard.module';
 import { JobsModule } from './jobs/jobs.module';
-import { MailModule } from './mail/mail.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { PublicModule } from './public/public.module';
 import { QueuesModule } from './queues/queues.module';
@@ -48,9 +50,11 @@ import { StorageModule } from './storage/storage.module';
       },
     ]),
     PrismaModule,
-    MailModule,
     QueuesModule,
     StorageModule,
+    AgentModule,
+    AiModule,
+    AnalyticsModule,
     AuthModule,
     ApplicationsModule,
     CandidateModule,

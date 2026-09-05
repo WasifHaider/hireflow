@@ -55,6 +55,7 @@ model Company {
   users        User[]
   jobs         Job[]
   applications Application[]
+  agentChats   AgentChat[]
 
   @@map("companies")
 }
@@ -71,8 +72,9 @@ model User {
   createdAt    DateTime  @default(now()) @map("created_at")
   updatedAt    DateTime  @updatedAt @map("updated_at")
 
-  company      Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  createdJobs  Job[]   @relation("UserCreatedJobs")
+  company      Company     @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  createdJobs  Job[]       @relation("UserCreatedJobs")
+  agentChats   AgentChat[]
 
   @@map("users")
 }
@@ -161,4 +163,26 @@ model Application {
   @@unique([jobId, candidateId])
   @@index([companyId, currentStage])
   @@map("applications")
+}
+
+// One recruiter copilot conversation thread. `messages` stores the full
+// transcript (the same role/content/tool_calls shape AgentService already
+// round-trips over SSE) as a single JSON blob — there's no need to query
+// individual messages independently, so a message-per-row table would just
+// add joins for no benefit. companyId + userId scope it to one recruiter's
+// own chats within their own tenant (never shared across users).
+model AgentChat {
+  id        String   @id @default(uuid())
+  companyId String   @map("company_id")
+  userId    String   @map("user_id")
+  title     String   @default("New chat")
+  messages  Json     @default("[]")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([companyId, userId, updatedAt])
+  @@map("agent_chats")
 }
